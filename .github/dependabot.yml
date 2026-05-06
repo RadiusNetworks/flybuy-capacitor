@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  # TypeScript / npm dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      capacitor:
+        patterns:
+          - "@capacitor/*"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  # Android / Gradle
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
