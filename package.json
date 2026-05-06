@@ -47,7 +47,7 @@
     "@capacitor/docgen": "^0.2.2",
     "@capacitor/ios": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
