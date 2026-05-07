@@ -57,7 +57,7 @@
     "typescript": "^5.4.0"
   },
   "peerDependencies": {
-    "@capacitor/core": "^6.0.0"
+    "@capacitor/core": ">=6.0.0"
   },
   "capacitor": {
     "ios": {
