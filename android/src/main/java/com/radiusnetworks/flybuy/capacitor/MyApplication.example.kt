@@ -12,19 +12,27 @@
 //      <meta-data
 //          android:name="com.google.android.geo.API_KEY"
 //          android:value="YOUR_GOOGLE_API_KEY"/>
+// 4. Register MyFirebaseMessagingService in AndroidManifest.xml:
+//      <service
+//          android:name=".MyFirebaseMessagingService"
+//          android:exported="false">
+//          <intent-filter>
+//              <action android:name="com.google.firebase.MESSAGING_EVENT" />
+//          </intent-filter>
+//      </service>
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
 package com.yourapp
 
 import android.app.Application
-import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import com.radiusnetworks.flybuy.sdk.FlyBuyCore
 import com.radiusnetworks.flybuy.sdk.pickup.PickupManager
-import com.radiusnetworks.flybuy.sdk.notify.NotifyManager
-// import com.radiusnetworks.flybuy.sdk.presence.PresenceManager     // Uncomment if using Presence
+// import com.radiusnetworks.flybuy.sdk.notify.NotifyManager       // Uncomment if using Notify
+// import com.radiusnetworks.flybuy.sdk.presence.PresenceManager   // Uncomment if using Presence
 // import com.radiusnetworks.flybuy.sdk.livestatus.LiveStatusManager  // Uncomment if using Live Status
-// import com.radiusnetworks.flybuy.sdk.livestatus.LiveStatusOptions  // Uncomment if using Live Status
+// import com.radiusnetworks.flybuy.sdk.livestatus.LiveStatusOptions
 
 class MyApplication : Application() {
 
@@ -44,24 +52,28 @@ class MyApplication : Application() {
         PickupManager.getInstance().configure(this)
 
         // ── Live Status Module (optional) ────────────────────────────────────
-        // Requires live-status gradle dependency
-        //
         // val liveStatusOptions = LiveStatusOptions.Builder()
         //     .setStatusTintColor(ContextCompat.getColor(this, R.color.liveStatusTintLight))
         //     .setStatusTintColorDarkMode(ContextCompat.getColor(this, R.color.liveStatusTintDark))
         //     .build()
         // LiveStatusManager.getInstance().configure(this, liveStatusOptions)
-        //
-        // To override the notification icon, add drawable res named: ic_stat_location_service
 
-        // ── Notify Module (optional — for geofence/beacon notifications) ─────
-        // Requires notify gradle dependency
-        //
+        // ── Notify Module (optional) ─────────────────────────────────────────
         // NotifyManager.getInstance().configure(this)
 
-        // ── Presence Module (optional — for Bluetooth presence) ──────────────
-        // Requires presence gradle dependency
-        //
+        // ── Presence Module (optional) ───────────────────────────────────────
         // PresenceManager.getInstance().configure(this, "YOUR-PRESENCE-UUID-HERE")
+
+        // ── Push Token ───────────────────────────────────────────────────────
+        // Refresh push token on app start
+        updatePushToken()
+    }
+
+    private fun updatePushToken() {
+        FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                task.result?.let { FlyBuyCore.onNewPushToken(it) }
+            }
+        }
     }
 }
