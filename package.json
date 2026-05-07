@@ -1,6 +1,7 @@
 {
   "name": "flybuy-capacitor",
   "version": "0.1.0",
+  "type": "module",
   "description": "Capacitor plugin wrapping the Flybuy SDK (iOS & Android) by Radius Networks",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -32,7 +33,7 @@
     "order-management"
   ],
   "scripts": {
-    "build": "npm run clean && npm run docgen && tsc && rollup -c rollup.config.js",
+    "build": "npm run clean && tsc && rollup -c rollup.config.js",
     "clean": "rimraf ./dist",
     "docgen": "docgen --api FlybuyPlugin --output-readme README.md --output-json dist/docs.json",
     "lint": "eslint . --ext ts",
