@@ -45,6 +45,22 @@ export enum PickupType {
 }
 
 // ─────────────────────────────────────────────
+// Link Types
+// ─────────────────────────────────────────────
+
+export enum LinkType {
+  DineIn = 'dineIn',
+  Redemption = 'redemption',
+  Other = 'other',
+}
+
+export interface LinkDetails {
+  url: string;
+  type: LinkType;
+  params?: Record<string, string>;  // e.g. { r: 'REDEMPTION_CODE' } for redemption links
+}
+
+// ─────────────────────────────────────────────
 // Error Codes
 // ─────────────────────────────────────────────
 
@@ -303,6 +319,19 @@ export interface FlybuyPlugin {
   fetchSiteByPartnerIdentifier(options: {
     partnerIdentifier: string;
   }): Promise<{ site: FlyBuySite }>;
+
+  // ── Deep Links ──────────────────────────────────
+
+  /**
+   * Parse a Flybuy deep link URL into a LinkDetails object.
+   * Call this from your app's universal link / intent handler.
+   *
+   * Link types:
+   *   - redemption: extract params.r as the redemption code
+   *   - dineIn: use the returned orderOptions to create an order
+   *   - other: not a Flybuy link, handle normally
+   */
+  parseLink(options: { url: string }): Promise<LinkDetails>;
 
   // ── Events ───────────────────────────────────
 

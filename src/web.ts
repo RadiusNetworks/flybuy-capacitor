@@ -6,6 +6,7 @@ import type {
   FlyBuySite,
   OrderOptions,
   CustomerInfo,
+  LinkDetails,
 } from './definitions';
 
 export class FlybuyWeb extends WebPlugin implements FlybuyPlugin {
@@ -102,5 +103,13 @@ export class FlybuyWeb extends WebPlugin implements FlybuyPlugin {
 
   async fetchSiteByPartnerIdentifier(_options: { partnerIdentifier: string }): Promise<{ site: FlyBuySite }> {
     return this.notSupported('fetchSiteByPartnerIdentifier');
+  }
+
+  async updateCustomTemplateContent(_options: { content: Record<string, string> }): Promise<void> {
+    return this.notSupported('updateCustomTemplateContent');
+  }
+
+  async parseLink(_options: { url: string }): Promise<LinkDetails> {
+    return this.notSupported('parseLink');
   }
 }

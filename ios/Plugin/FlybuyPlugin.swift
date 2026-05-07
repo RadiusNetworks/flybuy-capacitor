@@ -536,3 +536,51 @@ public class FlybuyPlugin: CAPPlugin {
         )
     }
 }
+
+    // MARK: - Notify
+
+    @objc func updateCustomTemplateContent(_ call: CAPPluginCall) {
+        guard let content = call.getObject("content") else {
+            return call.reject("content is required", "INVALID_ARGUMENT")
+        }
+
+        var templateContent: [String: String] = [:]
+        for key in content.keys {
+            if let value = content[key] as? String {
+                templateContent[key] = value
+            }
+        }
+
+        FlyBuyNotify.Manager.shared.updateCustomTemplateContent(templateContent)
+        call.resolve()
+    }
+
+    // MARK: - Deep Links
+
+    @objc func parseLink(_ call: CAPPluginCall) {
+        guard let urlString = call.getString("url"),
+              let url = URL(string: urlString) else {
+            return call.reject("url is required", "INVALID_ARGUMENT")
+        }
+
+        let linkDetails = FlyBuy.Links.parse(url: url)
+
+        var result: [String: Any] = [
+            "url": linkDetails.url.absoluteString,
+            "type": serializeLinkType(linkDetails.type)
+        ]
+
+        if let params = linkDetails.params {
+            result["params"] = params
+        }
+
+        call.resolve(result)
+    }
+
+    private func serializeLinkType(_ type: FlyBuy.LinkType) -> String {
+        switch type {
+        case .dineIn:     return "dineIn"
+        case .redemption: return "redemption"
+        default:          return "other"
+        }
+    }

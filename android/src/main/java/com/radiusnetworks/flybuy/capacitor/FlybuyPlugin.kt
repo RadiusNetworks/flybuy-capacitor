@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.radiusnetworks.flybuy.sdk.FlyBuyCore
+import com.radiusnetworks.flybuy.sdk.links.FlyBuyLinks
 import com.radiusnetworks.flybuy.sdk.data.common.GenericSdkError
 import com.radiusnetworks.flybuy.sdk.data.common.SdkError
 import com.radiusnetworks.flybuy.sdk.data.customer.CustomerInfo
@@ -383,6 +384,49 @@ class FlybuyPlugin : Plugin() {
             ret.put("site", serializeSite(site))
             call.resolve(ret)
         }
+    }
+
+    // ── Notify ───────────────────────────────────────────────────────────────────
+
+    @PluginMethod
+    fun updateCustomTemplateContent(call: PluginCall) {
+        val contentObj = call.getObject("content")
+            ?: return call.reject("content is required", "INVALID_ARGUMENT")
+
+        val templateContent = mutableMapOf<String, String>()
+        contentObj.keys().forEach { key ->
+            contentObj.getString(key)?.let { value ->
+                templateContent[key] = value
+            }
+        }
+
+        NotifyManager.getInstance().updateCustomTemplateContent(templateContent)
+        call.resolve()
+    }
+
+    // ── Deep Links ───────────────────────────────────────────────────────────────
+
+    @PluginMethod
+    fun parseLink(call: PluginCall) {
+        val url = call.getString("url")
+            ?: return call.reject("url is required", "INVALID_ARGUMENT")
+
+        val linkDetails = FlyBuyLinks.parse(url)
+
+        val ret = JSObject().apply {
+            put("url", linkDetails.url)
+            put("type", when (linkDetails.type.name.lowercase()) {
+                "dinein" -> "dineIn"
+                "redemption" -> "redemption"
+                else -> "other"
+            })
+            linkDetails.params?.let { params ->
+                val paramsObj = JSObject()
+                params.forEach { (key, value) -> paramsObj.put(key, value) }
+                put("params", paramsObj)
+            }
+        }
+        call.resolve(ret)
     }
 
     // ── Error Handling ────────────────────────────────────────────────────────

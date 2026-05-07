@@ -27,4 +27,10 @@ CAP_PLUGIN(FlybuyPlugin, "Flybuy",
     CAP_PLUGIN_METHOD(fetchSitesByQuery, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(fetchSitesByRegion, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(fetchSiteByPartnerIdentifier, CAPPluginReturnPromise);
+
+    // Notify
+    CAP_PLUGIN_METHOD(updateCustomTemplateContent, CAPPluginReturnPromise);
+
+    // Deep Links
+    CAP_PLUGIN_METHOD(parseLink, CAPPluginReturnPromise);
 )
