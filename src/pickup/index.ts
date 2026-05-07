@@ -7,3 +7,6 @@ const FlybuyPickup = registerPlugin<FlybuyPickupPlugin>('FlybuyPickup', {
 
 export * from './definitions';
 export { FlybuyPickup };
+
+// Re-export shared types so consumers can import from 'flybuy-capacitor/pickup'
+export type { FlyBuyOrder, OrderOptions, OrderState, CustomerState, PickupType } from '../definitions';
