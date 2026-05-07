@@ -96,23 +96,6 @@ public class FlybuyPlugin: CAPPlugin {
 
     // MARK: - Sites
 
-    @objc func fetchAllSites(_ call: CAPPluginCall) {
-        FlyBuy.Core.getInstance().sites.fetchAll { sites, error in
-            if let error = error { return self.rejectWithError(call, error) }
-            call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
-        }
-    }
-
-    @objc func fetchSitesByQuery(_ call: CAPPluginCall) {
-        guard let query = call.getString("query") else {
-            return call.reject("query is required", "INVALID_ARGUMENT")
-        }
-        FlyBuy.Core.getInstance().sites.fetch(query: query) { sites, error in
-            if let error = error { return self.rejectWithError(call, error) }
-            call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
-        }
-    }
-
     @objc func fetchSitesByRegion(_ call: CAPPluginCall) {
         guard let lat = call.getDouble("latitude"),
               let lng = call.getDouble("longitude"),

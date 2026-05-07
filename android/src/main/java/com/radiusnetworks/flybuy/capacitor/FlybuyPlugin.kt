@@ -131,29 +131,6 @@ class FlybuyPlugin : Plugin() {
     // ── Sites ─────────────────────────────────────────────────────────────────
 
     @PluginMethod
-    fun fetchAllSites(call: PluginCall) {
-        FlyBuyCore.getInstance().sites.fetchAll { sites, sdkError ->
-            if (sdkError != null) return@fetchAll rejectWithError(call, sdkError)
-            val ret = JSObject()
-            ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
-            call.resolve(ret)
-        }
-    }
-
-    @PluginMethod
-    fun fetchSitesByQuery(call: PluginCall) {
-        val query = call.getString("query")
-            ?: return call.reject("query is required", "INVALID_ARGUMENT")
-
-        FlyBuyCore.getInstance().sites.fetch(query = query) { sites, _, sdkError ->
-            if (sdkError != null) return@fetch rejectWithError(call, sdkError)
-            val ret = JSObject()
-            ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
-            call.resolve(ret)
-        }
-    }
-
-    @PluginMethod
     fun fetchSitesByRegion(call: PluginCall) {
         val latitude = call.getDouble("latitude")
             ?: return call.reject("latitude is required", "INVALID_ARGUMENT")
@@ -167,7 +144,7 @@ class FlybuyPlugin : Plugin() {
             longitude = longitude,
             radius = radiusMeters.toFloat()
         )
-        FlyBuyCore.getInstance().sites.fetch(region = region) { sites, sdkError ->
+        FlyBuyCore.getInstance().sites.fetch(region, null) { sites, _, sdkError ->
             if (sdkError != null) return@fetch rejectWithError(call, sdkError)
             val ret = JSObject()
             ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
@@ -180,7 +157,7 @@ class FlybuyPlugin : Plugin() {
         val partnerIdentifier = call.getString("partnerIdentifier")
             ?: return call.reject("partnerIdentifier is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().sites.fetchByPartnerIdentifier(partnerIdentifier) { site, sdkError ->
+        FlyBuyCore.getInstance().sites.fetchByPartnerIdentifier(partnerIdentifier, null) { site, sdkError ->
             if (sdkError != null) return@fetchByPartnerIdentifier rejectWithError(call, sdkError)
             if (site == null) return@fetchByPartnerIdentifier call.reject("Site not found", "NOT_FOUND")
             val ret = JSObject()
@@ -263,9 +240,9 @@ class FlybuyPlugin : Plugin() {
     internal fun buildCustomerInfo(obj: JSObject): CustomerInfo {
         return CustomerInfo(
             name = obj.getString("name") ?: "",
-            carType = obj.getString("carType") ?: "",
-            carColor = obj.getString("carColor") ?: "",
-            licensePlate = obj.getString("licensePlate") ?: "",
+            carType = obj.getString("carType"),
+            carColor = obj.getString("carColor"),
+            licensePlate = obj.getString("licensePlate"),
             phone = obj.getString("phone") ?: ""
         )
     }
