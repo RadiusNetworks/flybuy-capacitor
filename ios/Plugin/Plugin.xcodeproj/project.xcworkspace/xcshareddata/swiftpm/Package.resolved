@@ -1,0 +1,15 @@
+{
+  "originHash" : "22f1aa9e39c5f0ae8d08e28bfa803b6517ebc3ead2302dced47969c6db53b75e",
+  "pins" : [
+    {
+      "identity" : "flybuy-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/RadiusNetworks/flybuy-ios",
+      "state" : {
+        "revision" : "e486ba69b58774c6b9c42c117085f7790a11990e",
+        "version" : "2.12.5"
+      }
+    }
+  ],
+  "version" : 3
+}
