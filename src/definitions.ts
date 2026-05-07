@@ -1,5 +1,3 @@
-import type { PluginListenerHandle } from '@capacitor/core';
-
 // ─────────────────────────────────────────────
 // Customer State Values
 // ─────────────────────────────────────────────
@@ -41,7 +39,9 @@ export enum OrderState {
 export enum PickupType {
   Curbside = 'curbside',
   Pickup = 'pickup',
-  Delivery = 'delivery',
+  DriveThru = 'drive_thru',
+  // Note: 'delivery' is reserved for delivery service providers (DSPs)
+  // and should not be used in customer-facing apps.
 }
 
 // ─────────────────────────────────────────────
@@ -132,14 +132,14 @@ export interface FlyBuyOrder {
   // Identifiers
   partnerIdentifier?: string;
   partnerIdentifierForCrew?: string;
-  partnerIdentifierForCustomer?: string;  // display to customer; fall back to partnerIdentifier if null
+  partnerIdentifierForCustomer?: string;
 
   // Status flags
   redeemedAt?: string;                    // ISO8601 — empty means unclaimed
-  isOpen: boolean;                        // false means completed
+  isOpen: boolean;
 
   // Rating
-  customerRatingValue?: number;           // if set, order already rated — hide rating UI
+  customerRatingValue?: number;           // if set, order already rated
 
   // Spot
   spotIdentifierEntryEnabled?: boolean;
@@ -150,7 +150,7 @@ export interface FlyBuyOrder {
   pickupWindow?: PickupWindow;
   etaAtStop?: string;                     // ISO8601
 
-  // Customer vehicle info (for this order — may differ from logged-in customer)
+  // Customer vehicle info
   customerName?: string;
   customerCarType?: string;
   customerCarColor?: string;
@@ -160,10 +160,6 @@ export interface FlyBuyOrder {
   // Site
   siteID: number;
 }
-
-// ─────────────────────────────────────────────
-// Input Types
-// ─────────────────────────────────────────────
 
 export interface OrderOptions {
   customerName: string;                   // required
@@ -177,7 +173,7 @@ export interface OrderOptions {
   pickupType?: PickupType | string;
   state?: OrderState | string;
   transportMode?: 'driving' | 'walking' | 'biking' | string;
-  handoffVehicleLocation?: string;        // e.g. "driver_front", "passenger_rear", "trunk_rear"
+  handoffVehicleLocation?: string;
   pickupWindow?: PickupWindow;
   loyaltyIdentifier?: string;
   loyaltyProvider?: string;
@@ -187,91 +183,21 @@ export interface OrderOptions {
 }
 
 // ─────────────────────────────────────────────
-// Plugin Interface
+// Core Plugin Interface (customer + sites + links)
 // ─────────────────────────────────────────────
 
 export interface FlybuyPlugin {
 
-  // ── Orders ──────────────────────────────────
-
-  /** Fetch orders from the server and update local cache */
-  fetchOrders(): Promise<{ orders: FlyBuyOrder[] }>;
-
-  /** Return cached orders — no network call */
-  getOrders(options?: {
-    filter?: 'all' | 'open' | 'closed';
-  }): Promise<{ orders: FlyBuyOrder[] }>;
-
-  /** Fetch a single unclaimed order by redemption code */
-  fetchOrderByRedemptionCode(options: {
-    redemptionCode: string;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Create an order using a known Flybuy site ID */
-  createOrderBySiteID(options: {
-    siteID: number;
-    orderOptions: OrderOptions;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Create an order using a site partner identifier (only if site is "live") */
-  createOrderBySitePartnerIdentifier(options: {
-    sitePartnerIdentifier: string;
-    orderOptions: OrderOptions;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Claim an order and start location tracking */
-  claimOrder(options: {
-    redemptionCode: string;
-    orderOptions: OrderOptions;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Update the merchant-facing order state */
-  updateOrderState(options: {
-    orderID: number;
-    state: OrderState | string;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /**
-   * Update the customer-facing order state.
-   * spotIdentifier is only valid when customerState = 'waiting' (max 35 chars).
-   */
-  updateOrderCustomerState(options: {
-    orderID: number;
-    customerState: CustomerState | string;
-    spotIdentifier?: string;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Update pickup method and vehicle info while order is open */
-  updatePickupMethod(options: {
-    orderID: number;
-    pickupType: PickupType | string;
-    customerCarType?: string;
-    customerCarColor?: string;
-    customerLicensePlate?: string;
-    handoffVehicleLocation?: string;
-  }): Promise<{ order: FlyBuyOrder }>;
-
-  /** Rate a completed order */
-  rateOrder(options: {
-    orderID: number;
-    rating: number;                       // 1–5
-    comments?: string;
-    categories?: string[];
-  }): Promise<{ order: FlyBuyOrder }>;
-
   // ── Customer ─────────────────────────────────
 
-  /** Returns the currently logged-in customer, or null */
   getCurrentCustomer(): Promise<{ customer: FlyBuyCustomer | null }>;
 
-  /** Create an anonymous customer (no email/password) */
   createCustomer(options: {
     customerInfo: CustomerInfo;
-    termsOfService: boolean;              // must be true
-    ageVerification: boolean;             // must be true
+    termsOfService: boolean;
+    ageVerification: boolean;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  /** Create a customer with email and password credentials */
   createCustomerWithLogin(options: {
     customerInfo: CustomerInfo;
     email: string;
@@ -280,23 +206,16 @@ export interface FlybuyPlugin {
     ageVerification: boolean;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  /** Log in using a previously stored customer token */
   loginWithToken(options: {
     token: string;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  /** Clear current customer and order data */
   logoutCustomer(): Promise<void>;
 
-  /** Update the logged-in customer's info */
   updateCustomer(options: {
     customerInfo: CustomerInfo;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  /**
-   * Link email and password to the current anonymous customer.
-   * Call after createCustomer() if the user later wants a persistent account.
-   */
   signUpCustomer(options: {
     email: string;
     password: string;
@@ -320,36 +239,7 @@ export interface FlybuyPlugin {
     partnerIdentifier: string;
   }): Promise<{ site: FlyBuySite }>;
 
-  // ── Deep Links ──────────────────────────────────
+  // ── Deep Links ────────────────────────────────
 
-  /**
-   * Parse a Flybuy deep link URL into a LinkDetails object.
-   * Call this from your app's universal link / intent handler.
-   *
-   * Link types:
-   *   - redemption: extract params.r as the redemption code
-   *   - dineIn: use the returned orderOptions to create an order
-   *   - other: not a Flybuy link, handle normally
-   */
   parseLink(options: { url: string }): Promise<LinkDetails>;
-
-  // ── Events ───────────────────────────────────
-
-  /** Fired when the full order list is updated */
-  addListener(
-    eventName: 'ordersUpdated',
-    listenerFunc: (data: { orders: FlyBuyOrder[] }) => void
-  ): Promise<PluginListenerHandle>;
-
-  /** Fired when a single order is updated */
-  addListener(
-    eventName: 'orderUpdated',
-    listenerFunc: (data: { order: FlyBuyOrder }) => void
-  ): Promise<PluginListenerHandle>;
-
-  /** Fired when an order fetch error occurs */
-  addListener(
-    eventName: 'ordersError',
-    listenerFunc: (data: { error: string }) => void
-  ): Promise<PluginListenerHandle>;
 }
