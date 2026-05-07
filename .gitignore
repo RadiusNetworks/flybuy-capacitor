@@ -14,6 +14,8 @@ yarn-error.log*
 # iOS / Xcode
 # ─────────────────────────────────────────────
 ios/Pods/
+ios/Plugin/Pods/
+ios/Plugin/Plugin.xcworkspace/
 ios/*.xcworkspace
 ios/DerivedData/
 
@@ -50,13 +52,6 @@ android/.cxx/
 # IntelliJ / Android Studio
 *.iml
 .idea/
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/caches
 *.iws
 
 # ─────────────────────────────────────────────
