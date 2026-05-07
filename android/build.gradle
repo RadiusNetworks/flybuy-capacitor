@@ -41,16 +41,11 @@ android {
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':capacitor-android')
 
     // Flybuy SDK via BoM — replace 2.x.x with latest version
-    implementation platform("com.radiusnetworks.flybuy:bom:2.x.x")
+    implementation platform("com.radiusnetworks.flybuy:bom:2.16.4")
     implementation "com.radiusnetworks.flybuy:pickup"
     // implementation "com.radiusnetworks.flybuy:live-status"  // optional
     // implementation "com.radiusnetworks.flybuy:notify"       // optional
