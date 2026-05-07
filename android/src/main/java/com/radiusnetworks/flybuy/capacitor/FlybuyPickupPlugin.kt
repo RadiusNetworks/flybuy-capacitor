@@ -28,7 +28,7 @@ class FlybuyPickupPlugin : Plugin() {
         FlyBuyCore.getInstance().orders.fetch { orders, sdkError ->
             if (sdkError != null) return@fetch rejectWithError(call, sdkError)
             val ret = JSObject()
-            ret.put("orders", orders.map { serializeOrder(it) }.toJSArray())
+            ret.put("orders", (orders ?: emptyList()).map { serializeOrder(it) }.toJSArray())
             call.resolve(ret)
         }
     }
@@ -234,13 +234,13 @@ class FlybuyPickupPlugin : Plugin() {
             put("spotIdentifierInputType", order.spotIdentifierInputType.name)
             order.pickupType?.let { put("pickupType", it) }
             put("customerName", order.customer.name)
-            order.customer.carType?.let { put("customerCarType", it) }
-            order.customer.carColor?.let { put("customerCarColor", it) }
-            order.customer.licensePlate?.let { put("customerCarPlate", it) }
+            put("customerCarType", order.customer.carType)
+            put("customerCarColor", order.customer.carColor)
+            put("customerCarPlate", order.customer.licensePlate)
             order.etaAt?.let { put("etaAtStop", it.toString()) }  // etaAt is nullable
             order.pickupWindow?.let { window ->
                 val windowObj = JSObject()
-                windowObj.put("start", window.start.toString())
+                windowObj.put("start", window.start.toString())  // non-null
                 window.end?.let { windowObj.put("end", it.toString()) }
                 put("pickupWindow", windowObj)
             }

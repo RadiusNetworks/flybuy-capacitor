@@ -192,12 +192,12 @@ class FlybuyPlugin : Plugin() {
 
     internal fun rejectWithError(call: PluginCall, sdkError: SdkError) {
         when (sdkError) {
-            is PickupError -> call.reject(sdkError.userError() ?: "Pickup error: ${sdkError.errorType}", "PICKUP_ERROR")
-            is GenericSdkError<*> -> call.reject(sdkError.userError() ?: "SDK error: ${sdkError.errorType}", "SDK_ERROR")
+            is PickupError -> call.reject(sdkError.userError(), "PICKUP_ERROR")
+            is GenericSdkError<*> -> call.reject(sdkError.userError(), "SDK_ERROR")
             else -> {
                 val data = JSObject()
                 data.put("statusCode", sdkError.code)
-                call.reject(sdkError.userError() ?: "Error code: ${sdkError.code}", "API_ERROR", null, data)
+                call.reject(sdkError.userError(), "API_ERROR", null, data)
             }
         }
     }
@@ -209,10 +209,10 @@ class FlybuyPlugin : Plugin() {
             put("token", customer.apiToken)
             customer.email?.let { put("emailAddress", it) }
             put("name", customer.name)
-            customer.carType?.let { put("carType", it) }
-            customer.carColor?.let { put("carColor", it) }
-            customer.licensePlate?.let { put("licensePlate", it) }
-            customer.phone?.let { put("phone", it) }
+            put("carType", customer.carType)
+            put("carColor", customer.carColor)
+            put("licensePlate", customer.licensePlate)
+            put("phone", customer.phone)
         }
     }
 
@@ -240,9 +240,9 @@ class FlybuyPlugin : Plugin() {
     internal fun buildCustomerInfo(obj: JSObject): CustomerInfo {
         return CustomerInfo(
             name = obj.getString("name") ?: "",
-            carType = obj.getString("carType"),
-            carColor = obj.getString("carColor"),
-            licensePlate = obj.getString("licensePlate"),
+            carType = obj.getString("carType") ?: "",
+            carColor = obj.getString("carColor") ?: "",
+            licensePlate = obj.getString("licensePlate") ?: "",
             phone = obj.getString("phone") ?: ""
         )
     }
