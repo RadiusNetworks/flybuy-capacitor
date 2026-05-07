@@ -44,7 +44,7 @@
   },
   "devDependencies": {
     "@capacitor/android": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
+    "@capacitor/core": ">=6.0.0",
     "@capacitor/docgen": "^0.2.2",
     "@capacitor/ios": "^6.0.0",
     "@rollup/plugin-node-resolve": "^15.0.0",
@@ -65,6 +65,23 @@
     },
     "android": {
       "src": "android"
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/plugin.cjs.js"
+    },
+    "./pickup": {
+      "types": "./dist/esm/pickup/index.d.ts",
+      "import": "./dist/esm/pickup/index.js",
+      "require": "./dist/pickup/plugin.cjs.js"
+    },
+    "./notify": {
+      "types": "./dist/esm/notify/index.d.ts",
+      "import": "./dist/esm/notify/index.js",
+      "require": "./dist/notify/plugin.cjs.js"
     }
   }
 }
