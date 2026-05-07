@@ -1,18 +1,6 @@
 #import <Capacitor/Capacitor.h>
 
 CAP_PLUGIN(FlybuyPlugin, "Flybuy",
-    // Orders
-    CAP_PLUGIN_METHOD(fetchOrders, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(getOrders, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(fetchOrderByRedemptionCode, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(createOrderBySiteID, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(createOrderBySitePartnerIdentifier, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(claimOrder, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(updateOrderState, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(updateOrderCustomerState, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(updatePickupMethod, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(rateOrder, CAPPluginReturnPromise);
-
     // Customer
     CAP_PLUGIN_METHOD(getCurrentCustomer, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(createCustomer, CAPPluginReturnPromise);
@@ -27,9 +15,6 @@ CAP_PLUGIN(FlybuyPlugin, "Flybuy",
     CAP_PLUGIN_METHOD(fetchSitesByQuery, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(fetchSitesByRegion, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(fetchSiteByPartnerIdentifier, CAPPluginReturnPromise);
-
-    // Notify
-    CAP_PLUGIN_METHOD(updateCustomTemplateContent, CAPPluginReturnPromise);
 
     // Deep Links
     CAP_PLUGIN_METHOD(parseLink, CAPPluginReturnPromise);
