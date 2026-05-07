@@ -18,6 +18,7 @@ import Capacitor
 import FlyBuy
 import FlyBuyPickup
 import FlyBuyNotify
+// import Firebase         // Uncomment if using Firebase push
 // import FlyBuyPresence   // Uncomment if using Presence module
 // import FlyBuyLiveStatus // Uncomment if using Live Status module
 
@@ -69,10 +70,41 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Replace with your Presence UUID from the Flybuy dashboard
         // FlyBuyPresence.Manager.shared.configure("YOUR-PRESENCE-UUID-HERE")
 
+        // ── Push Notifications ───────────────────────────────────────────────
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
+        application.registerForRemoteNotifications()
+        // If using Firebase, also set: Messaging.messaging().delegate = self
+
         return true
     }
 
-    // Required for Capacitor
+    // ── Push Notification Handlers ───────────────────────────────────────────
+
+    // APNs direct — send device token to Flybuy
+    // Also needed when using Firebase with method swizzling disabled
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        // If using Firebase, uncomment this and remove the lines below:
+        // Messaging.messaging().apnsToken = deviceToken
+
+        let hexToken = deviceToken.map { String(format: "%02hhx", $0) }.joined()
+        #if DEBUG
+        FlyBuy.Core.updatePushToken("dev:" + hexToken)
+        #else
+        FlyBuy.Core.updatePushToken(hexToken)
+        #endif
+    }
+
+    // Handle incoming background push notifications
+    func application(_ application: UIApplication,
+                     didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+                     fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        FlyBuy.Core.handleRemoteNotification(userInfo)
+        completionHandler(.newData)
+    }
+
+    // ── Capacitor ────────────────────────────────────────────────────────────
+
     func application(
         _ app: UIApplication,
         open url: URL,
@@ -93,3 +125,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         )
     }
 }
+
+// ── Firebase Messaging Delegate ───────────────────────────────────────────────
+// Use this extension INSTEAD of the APNs didRegisterForRemoteNotificationsWithDeviceToken
+// handler above if you are using Firebase for push notifications.
+//
+// extension AppDelegate: MessagingDelegate {
+//     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+//         guard let token = fcmToken else { return }
+//         FlyBuy.Core.updatePushToken(token)
+//     }
+// }
