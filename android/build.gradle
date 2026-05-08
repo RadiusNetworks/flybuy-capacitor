@@ -1,6 +1,6 @@
 plugins {
-    id 'com.android.library' version '8.7.3'
-    id 'org.jetbrains.kotlin.android' version '2.3.21'
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
 }
 
 ext {
@@ -48,7 +48,7 @@ dependencies {
     implementation platform("com.radiusnetworks.flybuy:bom:2.16.4")
     implementation "com.radiusnetworks.flybuy:pickup"
     // implementation "com.radiusnetworks.flybuy:live-status"  // optional
-    implementation "com.radiusnetworks.flybuy:notify"   // only needed if using FlybuyNotifyPlugin
+    implementation "com.radiusnetworks.flybuy:notify"
     // implementation "com.radiusnetworks.flybuy:presence"     // optional
 
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
