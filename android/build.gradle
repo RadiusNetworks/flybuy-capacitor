@@ -25,12 +25,12 @@ android {
         abortOnError false
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_21
-        targetCompatibility JavaVersion.VERSION_21
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
         coreLibraryDesugaringEnabled true
     }
     kotlinOptions {
-        jvmTarget = '21'
+        jvmTarget = '17'
     }
 }
 
@@ -43,12 +43,14 @@ repositories {
 // Resolve Flybuy SDK flavor ambiguity when building the plugin standalone (CI).
 // When used as a library in a host app, the host app's allprojects block handles this.
 if (rootProject == project) {
-    configurations.all {
-        attributes {
-            attribute(
-                Attribute.of("com.android.build.api.attributes.ProductFlavor:flybuy", String),
-                "default"
-            )
+    configurations.all { config ->
+        if (config.canBeResolved || config.canBeConsumed) {
+            config.attributes {
+                attribute(
+                    Attribute.of("com.android.build.api.attributes.ProductFlavor:flybuy", String),
+                    "default"
+                )
+            }
         }
     }
 }
