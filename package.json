@@ -55,7 +55,7 @@
     "prettier": "^3.2.5",
     "rimraf": "^5.0.0",
     "rollup": "^4.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "@capacitor/core": ">=6.0.0"
