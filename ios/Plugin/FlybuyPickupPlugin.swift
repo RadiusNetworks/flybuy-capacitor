@@ -5,6 +5,10 @@ import FlyBuyPickup
 @objc(FlybuyPickupPlugin)
 public class FlybuyPickupPlugin: CAPPlugin {
 
+    private var core: Instance {
+        return try! FlyBuy.Core.getInstance()
+    }
+
     // MARK: - Order Observers
 
     private var orderObservers: [NSObjectProtocol] = []
@@ -16,7 +20,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
             queue: .main
         ) { [weak self] _ in
             guard let self = self else { return }
-            let orders = FlyBuy.Core.getInstance().orders.all
+            let orders = (try? FlyBuy.Core.getInstance())?.orders.all ?? []
             self.notifyListeners("ordersUpdated", data: [
                 "orders": orders.map { self.serializeOrder($0) }
             ])
@@ -28,7 +32,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
             queue: .main
         ) { [weak self] notification in
             guard let self = self else { return }
-            if let order = notification.object as? FlyBuyOrder {
+            if let order = notification.object as? Order {
                 self.notifyListeners("orderUpdated", data: [
                     "order": self.serializeOrder(order)
                 ])
@@ -58,7 +62,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
     // MARK: - Orders
 
     @objc func fetchOrders(_ call: CAPPluginCall) {
-        FlyBuy.Core.getInstance().orders.fetch { orders, error in
+        core.orders.fetch { orders, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["orders": (orders ?? []).map { self.serializeOrder($0) }])
         }
@@ -66,11 +70,11 @@ public class FlybuyPickupPlugin: CAPPlugin {
 
     @objc func getOrders(_ call: CAPPluginCall) {
         let filter = call.getString("filter") ?? "all"
-        let orders: [FlyBuyOrder]
+        let orders: [Order]
         switch filter {
-        case "open":   orders = FlyBuy.Core.getInstance().orders.open
-        case "closed": orders = FlyBuy.Core.getInstance().orders.closed
-        default:       orders = FlyBuy.Core.getInstance().orders.all
+        case "open":   orders = core.orders.open
+        case "closed": orders = core.orders.closed
+        default:       orders = core.orders.all
         }
         call.resolve(["orders": orders.map { serializeOrder($0) }])
     }
@@ -79,7 +83,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         guard let code = call.getString("redemptionCode") else {
             return call.reject("redemptionCode is required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().orders.fetch(withRedemptionCode: code) { order, error in
+        core.orders.fetch(withRedemptionCode: code) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order found", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -92,7 +96,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("siteID and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().orders.create(siteID: siteID, orderOptions: orderOptions) { order, error in
+        core.orders.create(siteID: siteID, orderOptions: orderOptions) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order returned", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -105,7 +109,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("sitePartnerIdentifier and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().orders.create(
+        core.orders.create(
             sitePartnerIdentifier: sitePartnerIdentifier,
             orderOptions: orderOptions
         ) { order, error in
@@ -121,7 +125,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("redemptionCode and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().orders.claim(
+        core.orders.claim(
             withRedemptionCode: code,
             orderOptions: orderOptions
         ) { order, error in
@@ -136,7 +140,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let state = call.getString("state") else {
             return call.reject("orderID and state are required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().orders.updateOrderState(orderID: orderID, state: state) { order, error in
+        core.orders.updateOrderState(orderID: orderID, state: state) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order returned", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -150,7 +154,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         }
         let spotIdentifier = call.getString("spotIdentifier")
         if let spotIdentifier = spotIdentifier {
-            FlyBuy.Core.getInstance().orders.updateCustomerState(
+            core.orders.updateCustomerState(
                 orderID: orderID, customerState: customerState, spotIdentifier: spotIdentifier
             ) { order, error in
                 if let error = error { return self.rejectWithError(call, error) }
@@ -158,7 +162,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
                 call.resolve(["order": self.serializeOrder(order)])
             }
         } else {
-            FlyBuy.Core.getInstance().orders.updateCustomerState(
+            core.orders.updateCustomerState(
                 orderID: orderID, customerState: customerState
             ) { order, error in
                 if let error = error { return self.rejectWithError(call, error) }
@@ -178,7 +182,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         if let carColor = call.getString("customerCarColor") { builder.setCustomerCarColor(carColor) }
         if let licensePlate = call.getString("customerLicensePlate") { builder.setCustomerLicensePlate(licensePlate) }
         if let handoffLocation = call.getString("handoffVehicleLocation") { builder.setHandoffVehicleLocation(handoffLocation) }
-        FlyBuy.Core.getInstance().orders.updatePickupMethod(
+        core.orders.updatePickupMethod(
             orderID: orderID, pickupMethodOptions: builder.build()
         ) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
@@ -194,7 +198,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         }
         let comments = call.getString("comments")
         let categories = call.getArray("categories", String.self) ?? []
-        FlyBuy.Core.getInstance().orders.rateOrder(
+        core.orders.rateOrder(
             orderID: orderID, rating: rating, comments: comments, categories: categories
         ) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
@@ -220,30 +224,27 @@ public class FlybuyPickupPlugin: CAPPlugin {
 
     // MARK: - Serializers
 
-    private func serializeOrder(_ order: FlyBuyOrder) -> [String: Any] {
+    private func serializeOrder(_ order: Order) -> [String: Any] {
         var dict: [String: Any] = [
             "id": order.id,
-            "state": order.state.rawValue,
-            "customerState": order.customerState.rawValue,
+            "state": order.state,
+            "customerState": order.customerState,
             "isOpen": order.isOpen(),
             "siteID": order.siteID,
         ]
         if let partnerIdentifier = order.partnerIdentifier { dict["partnerIdentifier"] = partnerIdentifier }
-        if let partnerIdentifierForCrew = order.partnerIdentifierForCrew { dict["partnerIdentifierForCrew"] = partnerIdentifierForCrew }
-        if let partnerIdentifierForCustomer = order.partnerIdentifierForCustomer { dict["partnerIdentifierForCustomer"] = partnerIdentifierForCustomer }
         if let redeemedAt = order.redeemedAt { dict["redeemedAt"] = ISO8601DateFormatter().string(from: redeemedAt) }
-        if let rating = order.customerRatingValue { dict["customerRatingValue"] = rating }
+        if let rating = order.customerRating { dict["customerRatingValue"] = rating }
         if let spotEnabled = order.spotIdentifierEntryEnabled { dict["spotIdentifierEntryEnabled"] = spotEnabled }
-        if let spotInputType = order.spotIdentifierInputType { dict["spotIdentifierInputType"] = spotInputType }
         if let pickupType = order.pickupType { dict["pickupType"] = pickupType }
         if let customerName = order.customerName { dict["customerName"] = customerName }
         if let customerCarType = order.customerCarType { dict["customerCarType"] = customerCarType }
         if let customerCarColor = order.customerCarColor { dict["customerCarColor"] = customerCarColor }
-        if let customerCarPlate = order.customerCarPlate { dict["customerCarPlate"] = customerCarPlate }
-        if let eta = order.etaAtStop { dict["etaAtStop"] = ISO8601DateFormatter().string(from: eta) }
+        if let customerLicensePlate = order.customerLicensePlate { dict["customerCarPlate"] = customerLicensePlate }
+        if let eta = order.etaAt { dict["etaAtStop"] = ISO8601DateFormatter().string(from: eta) }
         if let window = order.pickupWindow {
             var windowDict: [String: Any] = ["start": ISO8601DateFormatter().string(from: window.start)]
-            if let end = window.end { windowDict["end"] = ISO8601DateFormatter().string(from: end) }
+            windowDict["end"] = ISO8601DateFormatter().string(from: window.end)
             dict["pickupWindow"] = windowDict
         }
         return dict
@@ -259,19 +260,8 @@ public class FlybuyPickupPlugin: CAPPlugin {
         if let carType = dict["customerCarType"] as? String { builder.setCustomerCarType(carType) }
         if let carPlate = dict["customerCarPlate"] as? String { builder.setCustomerCarPlate(carPlate) }
         if let partnerIdentifier = dict["partnerIdentifier"] as? String { builder.setPartnerIdentifier(partnerIdentifier) }
-        if let partnerIdentifierForCrew = dict["partnerIdentifierForCrew"] as? String { builder.setPartnerIdentifierForCrew(partnerIdentifierForCrew) }
-        if let partnerIdentifierForCustomer = dict["partnerIdentifierForCustomer"] as? String { builder.setPartnerIdentifierForCustomer(partnerIdentifierForCustomer) }
         if let pickupType = dict["pickupType"] as? String { builder.setPickupType(pickupType) }
         if let state = dict["state"] as? String { builder.setState(state) }
-        if let transportMode = dict["transportMode"] as? String { builder.setTransportMode(transportMode) }
-        if let handoffLocation = dict["handoffVehicleLocation"] as? String { builder.setHandoffVehicleLocation(handoffLocation) }
-        if let loyaltyId = dict["loyaltyIdentifier"] as? String,
-           let loyaltyProvider = dict["loyaltyProvider"] as? String {
-            builder.setLoyaltyInfo(identifier: loyaltyId, provider: loyaltyProvider)
-        }
-        if let disableOrderFire = dict["disableOrderFire"] as? Bool { builder.setDisableOrderFire(disableOrderFire) }
-        if let disablePromiseTime = dict["disablePromiseTimeScheduling"] as? Bool { builder.setDisablePromiseTimeScheduling(disablePromiseTime) }
-        if let fireInterval = dict["orderFireMakeIntervalSeconds"] as? Int { builder.setOrderFireMakeIntervalSeconds(fireInterval) }
         if let windowDict = dict["pickupWindow"] as? [String: Any],
            let startStr = windowDict["start"] as? String,
            let startDate = ISO8601DateFormatter().date(from: startStr) {

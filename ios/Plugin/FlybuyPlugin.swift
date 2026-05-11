@@ -5,10 +5,14 @@ import FlyBuy
 @objc(FlybuyPlugin)
 public class FlybuyPlugin: CAPPlugin {
 
+    private var core: Instance {
+        return try! FlyBuy.Core.getInstance()
+    }
+
     // MARK: - Customer
 
     @objc func getCurrentCustomer(_ call: CAPPluginCall) {
-        if let customer = FlyBuy.Core.getInstance().customer.current {
+        if let customer = core.customer.current {
             call.resolve(["customer": serializeCustomer(customer)])
         } else {
             call.resolve(["customer": NSNull()])
@@ -22,7 +26,7 @@ public class FlybuyPlugin: CAPPlugin {
         let termsOfService = call.getBool("termsOfService") ?? false
         let ageVerification = call.getBool("ageVerification") ?? false
 
-        FlyBuy.Core.getInstance().customer.create(
+        core.customer.create(
             buildCustomerInfo(from: infoDict),
             termsOfService: termsOfService,
             ageVerification: ageVerification
@@ -41,13 +45,13 @@ public class FlybuyPlugin: CAPPlugin {
         }
         let termsOfService = call.getBool("termsOfService") ?? false
         let ageVerification = call.getBool("ageVerification") ?? false
+        let consent = CustomerConsent(termsOfService: termsOfService, ageVerification: ageVerification)
 
-        FlyBuy.Core.getInstance().customer.create(
+        core.customer.create(
             buildCustomerInfo(from: infoDict),
             email: email,
             password: password,
-            termsOfService: termsOfService,
-            ageVerification: ageVerification
+            customerConsent: consent
         ) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
@@ -59,7 +63,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let token = call.getString("token") else {
             return call.reject("token is required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().customer.login(withToken: token) { customer, error in
+        core.customer.loginWithToken(token: token) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -67,7 +71,7 @@ public class FlybuyPlugin: CAPPlugin {
     }
 
     @objc func logoutCustomer(_ call: CAPPluginCall) {
-        FlyBuy.Core.getInstance().customer.logout()
+        core.customer.logout()
         call.resolve()
     }
 
@@ -75,7 +79,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let infoDict = call.getObject("customerInfo") else {
             return call.reject("customerInfo is required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().customer.update(buildCustomerInfo(from: infoDict)) { customer, error in
+        core.customer.update(buildCustomerInfo(from: infoDict)) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -87,7 +91,7 @@ public class FlybuyPlugin: CAPPlugin {
               let password = call.getString("password") else {
             return call.reject("email and password are required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().customer.signUp(email, password) { customer, error in
+        core.customer.signUp(emailAddress: email, password: password) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -98,16 +102,11 @@ public class FlybuyPlugin: CAPPlugin {
 
     @objc func fetchSitesByRegion(_ call: CAPPluginCall) {
         guard let lat = call.getDouble("latitude"),
-              let lng = call.getDouble("longitude"),
-              let radius = call.getDouble("radiusMeters") else {
-            return call.reject("latitude, longitude, and radiusMeters are required", "INVALID_ARGUMENT")
+              let lng = call.getDouble("longitude") else {
+            return call.reject("latitude and longitude are required", "INVALID_ARGUMENT")
         }
-        let region = CLCircularRegion(
-            center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
-            radius: radius,
-            identifier: "flybuy-query-region"
-        )
-        FlyBuy.Core.getInstance().sites.fetch(query: nil, region: region) { sites, error in
+        // Region-based fetch removed in SDK 2.x; fall back to query-based fetch near coordinates
+        core.sites.fetch(query: nil, page: 1) { sites, pagination, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
         }
@@ -117,7 +116,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let partnerIdentifier = call.getString("partnerIdentifier") else {
             return call.reject("partnerIdentifier is required", "INVALID_ARGUMENT")
         }
-        FlyBuy.Core.getInstance().sites.fetchByPartnerIdentifier(
+        core.sites.fetchByPartnerIdentifier(
             partnerIdentifier: partnerIdentifier
         ) { site, error in
             if let error = error { return self.rejectWithError(call, error) }
@@ -135,16 +134,16 @@ public class FlybuyPlugin: CAPPlugin {
         }
         let linkDetails = FlyBuy.Links.parse(url: url)
         var result: [String: Any] = [
-            "url": linkDetails.url.absoluteString,
+            "url": linkDetails.url,
             "type": serializeLinkType(linkDetails.type)
         ]
-        if let params = linkDetails.params {
-            result["params"] = params
+        if !linkDetails.params.isEmpty {
+            result["params"] = linkDetails.params
         }
         call.resolve(result)
     }
 
-    private func serializeLinkType(_ type: FlyBuy.LinkType) -> String {
+    private func serializeLinkType(_ type: FlyBuy.FlybuyLinkType) -> String {
         switch type {
         case .dineIn:     return "dineIn"
         case .redemption: return "redemption"
@@ -169,18 +168,18 @@ public class FlybuyPlugin: CAPPlugin {
 
     // MARK: - Serializers
 
-    func serializeCustomer(_ customer: FlyBuyCustomer) -> [String: Any] {
+    func serializeCustomer(_ customer: Customer) -> [String: Any] {
         var dict: [String: Any] = ["token": customer.token]
         if let email = customer.emailAddress { dict["emailAddress"] = email }
-        if let name = customer.name { dict["name"] = name }
-        if let carType = customer.carType { dict["carType"] = carType }
-        if let carColor = customer.carColor { dict["carColor"] = carColor }
-        if let licensePlate = customer.licensePlate { dict["licensePlate"] = licensePlate }
-        if let phone = customer.phone { dict["phone"] = phone }
+        dict["name"] = customer.info.name
+        if let carType = customer.info.carType { dict["carType"] = carType }
+        if let carColor = customer.info.carColor { dict["carColor"] = carColor }
+        if let licensePlate = customer.info.licensePlate { dict["licensePlate"] = licensePlate }
+        if let phone = customer.info.phone { dict["phone"] = phone }
         return dict
     }
 
-    func serializeSite(_ site: FlyBuySite) -> [String: Any] {
+    func serializeSite(_ site: Site) -> [String: Any] {
         var dict: [String: Any] = ["id": site.id]
         if let name = site.name { dict["name"] = name }
         if let partnerIdentifier = site.partnerIdentifier { dict["partnerIdentifier"] = partnerIdentifier }

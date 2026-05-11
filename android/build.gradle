@@ -1,7 +1,5 @@
-plugins {
-    id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
-}
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
 
 ext {
     junitVersion = project.hasProperty('junitVersion') ? rootProject.ext.junitVersion : '4.13.2'
@@ -13,45 +11,59 @@ ext {
 android {
     namespace "com.radiusnetworks.flybuy.capacitor"
     compileSdk project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 35
-
     defaultConfig {
-        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 26
-        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 35
-        versionCode 1
-        versionName "0.1.0"
-
-        // Required for Flybuy SDK 2.10.0+
-        missingDimensionStrategy("flybuy", "default")
+        minSdk project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 26
+        targetSdk project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 35
     }
-
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+    lintOptions {
+        abortOnError false
     }
-
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+        coreLibraryDesugaringEnabled true
+    }
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = '21'
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://packages.radiusnetworks.com/android/sdk' }
+}
+
+// Resolve Flybuy SDK flavor ambiguity when building the plugin standalone (CI).
+// When used as a library in a host app, the host app's allprojects block handles this.
+if (rootProject == project) {
+    configurations.all {
+        attributes {
+            attribute(
+                Attribute.of("com.android.build.api.attributes.ProductFlavor:flybuy", String),
+                "default"
+            )
+        }
     }
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
 
-    // Flybuy SDK via BoM
+    // Flybuy SDK — Bill of Materials
     implementation platform("com.radiusnetworks.flybuy:bom:2.16.4")
+    implementation "com.radiusnetworks.flybuy:core"
     implementation "com.radiusnetworks.flybuy:pickup"
-    // implementation "com.radiusnetworks.flybuy:live-status"  // optional
     implementation "com.radiusnetworks.flybuy:notify"
-    // implementation "com.radiusnetworks.flybuy:presence"     // optional
 
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

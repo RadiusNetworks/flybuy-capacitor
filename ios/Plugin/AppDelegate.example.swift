@@ -129,7 +129,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         switch linkDetails.type {
         case .redemption:
-            if let code = linkDetails.params?["r"] {
+            if let code = linkDetails.params["r"] {
                 // Send redemption code to Ionic layer
                 // NotificationCenter.default.post(name: .flybuyRedemption, object: code)
             }
