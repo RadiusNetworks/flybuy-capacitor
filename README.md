@@ -1,17 +1,24 @@
-# flybuy-capacitor
- 
 Capacitor plugin wrapping the [Flybuy SDK](https://www.radiusnetworks.com/developers/flybuy) by Radius Networks.
  
-Supports iOS and Android. Exposes the Pickup module's Orders, Customer, and Sites managers to JavaScript/TypeScript.
+Supports iOS and Android. Exposes the Core, Pickup, and Notify modules to JavaScript/TypeScript.
  
 ---
  
 ## Installation
  
+This package is distributed via GitHub, not npm.
+ 
 ```bash
-npm install flybuy-capacitor
+# Latest from main
+npm install github:RadiusNetworks/flybuy-capacitor
+npx cap sync
+ 
+# Pin to a specific release tag (recommended for production)
+npm install github:RadiusNetworks/flybuy-capacitor#v0.1.5
 npx cap sync
 ```
+ 
+The `prepare` script compiles TypeScript automatically on install — no pre-built `dist/` folder needs to be committed.
  
 ---
  
@@ -21,17 +28,18 @@ npx cap sync
  
 Copy the contents of `ios/Plugin/AppDelegate.example.swift` into your host app's `AppDelegate.swift`. Flybuy **must** be configured at launch — it cannot be initialized from JavaScript.
  
-The Flybuy iOS SDK is pulled in automatically via `Package.swift` when you run `npm install` + `npx cap sync`. You do not need to manually add it in Xcode.
- 
 ```swift
 import FlyBuy
 import FlyBuyPickup
+import FlyBuyNotify
  
 func application(_ application: UIApplication, didFinishLaunchingWithOptions...) -> Bool {
     let configOptions = ConfigOptions.Builder(token: "YOUR_APP_TOKEN")
         .build()
     FlyBuy.Core.configure(withOptions: configOptions)
     FlyBuyPickup.Manager.shared.configure()
+    FlyBuyNotify.Manager.shared.configure(bgTaskIdentifier: "com.yourapp.flybuy.refresh")
+    UNUserNotificationCenter.current().delegate = self
     return true
 }
 ```
@@ -59,21 +67,22 @@ Enable **Background Modes** and check:
  
 ### 1. Configure Application class
  
-Create (or update) your `Application` class. Copy `android/src/example/MyApplication.kt` as a starting point. Flybuy **must** be configured at launch — it cannot be initialized from JavaScript.
+Create (or update) your `Application` class. Copy `android/examples/MyApplication.example.kt` as a starting point. Flybuy **must** be configured at launch — it cannot be initialized from JavaScript.
  
 Register it in `AndroidManifest.xml`:
  
 ```xml
-<application android:name=".MyApplication" ...>
+<application android:name=".MainApplication" ...>
 ```
  
 ```kotlin
-class MyApplication : Application() {
+class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         val configOptions = ConfigOptions.Builder("YOUR_APP_TOKEN_HERE").build()
         FlyBuyCore.configure(this, configOptions)
         PickupManager.getInstance().configure(this)
+        NotifyManager.getInstance().configure(this)
         updatePushToken()
     }
  
@@ -89,11 +98,11 @@ class MyApplication : Application() {
  
 ### 2. Firebase Messaging Service
  
-Copy `android/src/example/MyFirebaseMessagingService.kt` into your app and register it in `AndroidManifest.xml`:
+Copy `android/examples/MyFirebaseMessagingService.example.kt` into your app and register it in `AndroidManifest.xml`:
  
 ```xml
 <service
-    android:name=".MyFirebaseMessagingService"
+    android:name=".FlyBuyFirebaseMessagingService"
     android:exported="false">
     <intent-filter>
         <action android:name="com.google.firebase.MESSAGING_EVENT" />
@@ -111,9 +120,9 @@ Add to `AndroidManifest.xml` inside `<application>`:
     android:value="YOUR_GOOGLE_API_KEY"/>
 ```
  
-### 4. Deep Links and Notifications (optional)
+### 4. Deep Links and Notifications
  
-Copy `android/src/example/MainActivity.kt` into your app for deep link and notification handling. See the file for `AndroidManifest.xml` intent filter setup.
+Copy `android/examples/MainActivity.example.kt` into your app for deep link and notification handling. See the file for `AndroidManifest.xml` intent filter setup.
  
 ---
  
@@ -121,19 +130,21 @@ Copy `android/src/example/MainActivity.kt` into your app for deep link and notif
  
 ```typescript
 import { Flybuy, CustomerState, OrderState, FlybuyErrorCode } from 'flybuy-capacitor';
+import { FlybuyPickup } from 'flybuy-capacitor/pickup';
+import { FlybuyNotify } from 'flybuy-capacitor/notify';
  
 // ── Listen for order updates ──────────────────────────────────
-const listener = await Flybuy.addListener('orderUpdated', ({ order }) => {
+const listener = await FlybuyPickup.addListener('orderUpdated', ({ order }) => {
   console.log('Order updated:', order.state, order.customerState);
 });
  
 // Clean up
 listener.remove();
  
-// ── Customer ──────────────────────────────────────────────────────────
+// ── Customer ──────────────────────────────────────────────────
  
 // The SDK persists the customer session until the app is uninstalled
-// or logoutCustomer() is called -- no token storage needed for typical use.
+// or logout() is called -- no token storage needed for typical use.
 const { customer } = await Flybuy.getCurrentCustomer();
  
 if (!customer) {
@@ -148,7 +159,7 @@ if (!customer) {
 // ── Order Redemption Flow ─────────────────────────────────────
  
 // 1. Fetch order to show details
-const { order } = await Flybuy.fetchOrderByRedemptionCode({
+const { order } = await FlybuyPickup.fetchOrderByRedemptionCode({
   redemptionCode: 'ABC123',
 });
  
@@ -159,7 +170,7 @@ if (order.redeemedAt) {
 }
  
 // 3. Claim the order
-const { order: claimedOrder } = await Flybuy.claimOrder({
+const { order: claimedOrder } = await FlybuyPickup.claimOrder({
   redemptionCode: 'ABC123',
   orderOptions: {
     customerName: 'Marty McFly',
@@ -171,7 +182,7 @@ const { order: claimedOrder } = await Flybuy.claimOrder({
 });
  
 // 4. Start location tracking
-await Flybuy.updateOrderCustomerState({
+await FlybuyPickup.updateOrderCustomerState({
   orderID: claimedOrder.id,
   customerState: CustomerState.EnRoute,
 });
@@ -188,30 +199,72 @@ function getOrderViewState(order) {
 }
  
 // I'm waiting — with optional spot identifier
-await Flybuy.updateOrderCustomerState({
+await FlybuyPickup.updateOrderCustomerState({
   orderID: order.id,
   customerState: CustomerState.Waiting,
   spotIdentifier: '4B',
 });
  
 // I have my order
-await Flybuy.updateOrderCustomerState({
+await FlybuyPickup.updateOrderCustomerState({
   orderID: order.id,
   customerState: CustomerState.Completed,
 });
  
 // Rate the order
-await Flybuy.rateOrder({
+await FlybuyPickup.rateOrder({
   orderID: order.id,
   rating: 5,
   comments: 'Great service',
   categories: ['speed', 'quality'],
 });
  
+// ── Sites ─────────────────────────────────────────────────────
+ 
+// Fetch sites near a location
+const { sites } = await Flybuy.fetchSitesByRegion({
+  latitude: 37.7749,
+  longitude: -122.4194,
+  radiusMeters: 50000,
+});
+ 
+// Fetch a specific site
+const { site } = await Flybuy.fetchSiteByPartnerIdentifier({
+  partnerIdentifier: 'my-store-123',
+});
+ 
+// Search for places then fetch nearby sites
+const { places } = await Flybuy.placesSuggest({ query: 'Coffee' });
+const { place } = await Flybuy.placesRetrieve({ place: places[0] });
+const { sites: nearbySites } = await Flybuy.fetchSitesNearPlace({
+  place,
+  radius: 10000,
+});
+ 
+// ── Deep Links ────────────────────────────────────────────────
+ 
+const link = await Flybuy.parseLink({ url: incomingURL });
+if (link.type === 'redemption' && link.params?.r) {
+  // Handle redemption code
+}
+ 
+// ── Notify ────────────────────────────────────────────────────
+ 
+// Update template content for personalized notifications
+await FlybuyNotify.updateCustomTemplateContent({
+  content: {
+    name: 'Marty McFly',
+    reward_points: '100',
+  }
+});
+ 
+// Sync campaign data
+await FlybuyNotify.sync({ force: false });
+ 
 // ── Error Handling ────────────────────────────────────────────
  
 try {
-  await Flybuy.fetchOrderByRedemptionCode({ redemptionCode: 'INVALID' });
+  await FlybuyPickup.fetchOrderByRedemptionCode({ redemptionCode: 'INVALID' });
 } catch (err: any) {
   switch (err.code) {
     case FlybuyErrorCode.OrdersError:
@@ -232,7 +285,40 @@ try {
  
 See [src/definitions.ts](src/definitions.ts) for the full TypeScript interface including all methods, options, and return types.
  
-### Orders
+### Core (`flybuy-capacitor`)
+ 
+#### Customer
+| Method | Description |
+|---|---|
+| `getCurrentCustomer()` | Get current logged-in customer or null |
+| `createCustomer(...)` | Create anonymous customer |
+| `login(...)` | Create customer with email/password |
+| `loginWithToken(...)` | Log in with stored customer token |
+| `logout()` | Clear customer and order data |
+| `updateCustomer(...)` | Update customer info |
+| `signUp(...)` | Link email/password to anonymous customer |
+ 
+#### Sites
+| Method | Description |
+|---|---|
+| `fetchSitesByRegion(...)` | Fetch sites within a geographic radius |
+| `fetchSiteByPartnerIdentifier(...)` | Fetch a single site by partner identifier |
+| `fetchSitesNearPlace(...)` | Fetch sites near a resolved place |
+ 
+#### Places
+| Method | Description |
+|---|---|
+| `placesSuggest(...)` | Get place suggestions for a keyword |
+| `placesRetrieve(...)` | Resolve a place suggestion to full coordinates |
+ 
+#### Deep Links
+| Method | Description |
+|---|---|
+| `parseLink(...)` | Parse a Flybuy URL into type and params |
+ 
+### Pickup (`flybuy-capacitor/pickup`)
+ 
+#### Orders
 | Method | Description |
 |---|---|
 | `fetchOrders()` | Fetch orders from server, update cache |
@@ -246,35 +332,21 @@ See [src/definitions.ts](src/definitions.ts) for the full TypeScript interface i
 | `updatePickupMethod(...)` | Update pickup type and vehicle info |
 | `rateOrder(...)` | Submit order rating with optional comments and categories |
  
-### Customer
-| Method | Description |
-|---|---|
-| `getCurrentCustomer()` | Get current logged-in customer or null |
-| `createCustomer(...)` | Create anonymous customer |
-| `createCustomerWithLogin(...)` | Create customer with email/password |
-| `loginWithToken(...)` | Log in with stored customer token |
-| `logoutCustomer()` | Clear customer and order data |
-| `updateCustomer(...)` | Update customer info |
-| `signUpCustomer(...)` | Link email/password to anonymous customer |
- 
-### Sites
-| Method | Description |
-|---|---|
-| `fetchAllSites()` | Fetch all sites |
-| `fetchSitesByQuery(...)` | Search sites by query string |
-| `fetchSitesByRegion(...)` | Fetch sites within a geographic radius |
-| `fetchSiteByPartnerIdentifier(...)` | Fetch a single site by partner identifier |
- 
-### Events
+#### Events
 | Event | Payload |
 |---|---|
 | `ordersUpdated` | `{ orders: FlyBuyOrder[] }` |
 | `orderUpdated` | `{ order: FlyBuyOrder }` |
 | `ordersError` | `{ error: string }` |
  
+### Notify (`flybuy-capacitor/notify`)
+| Method | Description |
+|---|---|
+| `updateCustomTemplateContent(...)` | Inject dynamic values into notification templates |
+| `sync(...)` | Sync campaign data with the server |
+ 
 ---
  
 ## License
  
 MIT © Radius Networks
- 
