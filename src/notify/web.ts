@@ -10,4 +10,8 @@ export class FlybuyNotifyWeb extends WebPlugin implements FlybuyNotifyPlugin {
   async updateCustomTemplateContent(_options: { content: Record<string, string> }): Promise<void> {
     return this.notSupported('updateCustomTemplateContent');
   }
+
+  async sync(_options: { force: boolean }): Promise<void> {
+    return this.notSupported('sync');
+  }
 }

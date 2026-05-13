@@ -1,3 +1,9 @@
+export interface NotificationInfo {
+  title: string;
+  message: string;
+  data?: Record<string, string>;
+}
+
 export interface FlybuyNotifyPlugin {
 
   /**
@@ -12,4 +18,10 @@ export interface FlybuyNotifyPlugin {
   updateCustomTemplateContent(options: {
     content: Record<string, string>;
   }): Promise<void>;
+
+  /**
+   * Sync Notify campaign data with the server.
+   * @param force - If true, forces a sync even if recently synced.
+   */
+  sync(options: { force: boolean }): Promise<void>;
 }

@@ -5,7 +5,7 @@ import FlyBuy
 @objc(FlybuyPlugin)
 public class FlybuyPlugin: CAPPlugin {
 
-    private var core: Instance {
+    private var core: FlyBuy.Instance {
         return try! FlyBuy.Core.getInstance()
     }
 
@@ -37,7 +37,7 @@ public class FlybuyPlugin: CAPPlugin {
         }
     }
 
-    @objc func createCustomerWithLogin(_ call: CAPPluginCall) {
+    @objc func login(_ call: CAPPluginCall) {
         guard let infoDict = call.getObject("customerInfo"),
               let email = call.getString("email"),
               let password = call.getString("password") else {
@@ -46,7 +46,6 @@ public class FlybuyPlugin: CAPPlugin {
         let termsOfService = call.getBool("termsOfService") ?? false
         let ageVerification = call.getBool("ageVerification") ?? false
         let consent = CustomerConsent(termsOfService: termsOfService, ageVerification: ageVerification)
-
         core.customer.create(
             buildCustomerInfo(from: infoDict),
             email: email,
@@ -70,7 +69,7 @@ public class FlybuyPlugin: CAPPlugin {
         }
     }
 
-    @objc func logoutCustomer(_ call: CAPPluginCall) {
+    @objc func logout(_ call: CAPPluginCall) {
         core.customer.logout()
         call.resolve()
     }
@@ -86,7 +85,7 @@ public class FlybuyPlugin: CAPPlugin {
         }
     }
 
-    @objc func signUpCustomer(_ call: CAPPluginCall) {
+    @objc func signUp(_ call: CAPPluginCall) {
         guard let email = call.getString("email"),
               let password = call.getString("password") else {
             return call.reject("email and password are required", "INVALID_ARGUMENT")
@@ -102,11 +101,17 @@ public class FlybuyPlugin: CAPPlugin {
 
     @objc func fetchSitesByRegion(_ call: CAPPluginCall) {
         guard let lat = call.getDouble("latitude"),
-              let lng = call.getDouble("longitude") else {
-            return call.reject("latitude and longitude are required", "INVALID_ARGUMENT")
+              let lng = call.getDouble("longitude"),
+              let radius = call.getDouble("radiusMeters") else {
+            return call.reject("latitude, longitude, and radiusMeters are required", "INVALID_ARGUMENT")
         }
-        // Region-based fetch removed in SDK 2.x; fall back to query-based fetch near coordinates
-        core.sites.fetch(query: nil, page: 1) { sites, pagination, error in
+        let region = FlyBuyCircularRegion(
+            latitude: lat,
+            longitude: lng,
+            radius: radius,
+            identifier: "flybuy-query-region"
+        )
+        core.sites.fetch(region: region, options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)) { sites, _, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
         }
@@ -117,11 +122,64 @@ public class FlybuyPlugin: CAPPlugin {
             return call.reject("partnerIdentifier is required", "INVALID_ARGUMENT")
         }
         core.sites.fetchByPartnerIdentifier(
-            partnerIdentifier: partnerIdentifier
+            partnerIdentifier: partnerIdentifier,
+            options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
         ) { site, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let site = site else { return call.reject("Site not found", "NOT_FOUND") }
             call.resolve(["site": self.serializeSite(site)])
+        }
+    }
+
+    @objc func fetchSitesNearPlace(_ call: CAPPluginCall) {
+        guard let placeDict = call.getObject("place"),
+              let radius = call.getDouble("radius") else {
+            return call.reject("place and radius are required", "INVALID_ARGUMENT")
+        }
+        let place = buildPlace(from: placeDict)
+        core.sites.fetchNear(
+            place: place,
+            radius: radius,
+            options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
+        ) { sites, _, error in
+            if let error = error { return self.rejectWithError(call, error) }
+            call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
+        }
+    }
+
+    // MARK: - Places
+
+    @objc func placesSuggest(_ call: CAPPluginCall) {
+        guard let query = call.getString("query") else {
+            return call.reject("query is required", "INVALID_ARGUMENT")
+        }
+        let optionsDict = call.getObject("options")
+        let lat = optionsDict?["latitude"] as? Double ?? 0.0
+        let lng = optionsDict?["longitude"] as? Double ?? 0.0
+        let options = PlaceSuggestionOptions(
+            latitude: lat,
+            longitude: lng,
+            types: [],
+            countryCodes: []
+        )
+        core.places.suggest(query: query, options: options) { places, error in
+            if let error = error { return self.rejectWithError(call, error) }
+            call.resolve(["places": (places ?? []).map { self.serializePlace($0) }])
+        }
+    }
+
+    @objc func placesRetrieve(_ call: CAPPluginCall) {
+        guard let placeDict = call.getObject("place") else {
+            return call.reject("place is required", "INVALID_ARGUMENT")
+        }
+        let place = buildPlace(from: placeDict)
+        core.places.retrieve(place: place) { coordinate, error in
+            if let error = error { return self.rejectWithError(call, error) }
+            guard let coordinate = coordinate else { return call.reject("Place not found", "NOT_FOUND") }
+            call.resolve(["place": [
+                "latitude": coordinate.latitude,
+                "longitude": coordinate.longitude
+            ]])
         }
     }
 
@@ -133,22 +191,20 @@ public class FlybuyPlugin: CAPPlugin {
             return call.reject("url is required", "INVALID_ARGUMENT")
         }
         let linkDetails = FlyBuy.Links.parse(url: url)
+        let linkType: String
+        switch linkDetails.type {
+        case .dineIn:     linkType = "dineIn"
+        case .redemption: linkType = "redemption"
+        default:          linkType = "other"
+        }
         var result: [String: Any] = [
             "url": linkDetails.url,
-            "type": serializeLinkType(linkDetails.type)
+            "type": linkType
         ]
         if !linkDetails.params.isEmpty {
             result["params"] = linkDetails.params
         }
         call.resolve(result)
-    }
-
-    private func serializeLinkType(_ type: FlyBuy.FlybuyLinkType) -> String {
-        switch type {
-        case .dineIn:     return "dineIn"
-        case .redemption: return "redemption"
-        default:          return "other"
-        }
     }
 
     // MARK: - Error Handling
@@ -168,7 +224,7 @@ public class FlybuyPlugin: CAPPlugin {
 
     // MARK: - Serializers
 
-    func serializeCustomer(_ customer: Customer) -> [String: Any] {
+    func serializeCustomer(_ customer: FlyBuy.Customer) -> [String: Any] {
         var dict: [String: Any] = ["token": customer.token]
         if let email = customer.emailAddress { dict["emailAddress"] = email }
         dict["name"] = customer.info.name
@@ -179,7 +235,7 @@ public class FlybuyPlugin: CAPPlugin {
         return dict
     }
 
-    func serializeSite(_ site: Site) -> [String: Any] {
+    func serializeSite(_ site: FlyBuy.Site) -> [String: Any] {
         var dict: [String: Any] = ["id": site.id]
         if let name = site.name { dict["name"] = name }
         if let partnerIdentifier = site.partnerIdentifier { dict["partnerIdentifier"] = partnerIdentifier }
@@ -195,6 +251,25 @@ public class FlybuyPlugin: CAPPlugin {
         if let description = site.descriptionText { dict["descriptionText"] = description }
         if let coverPhoto = site.coverPhotoURL { dict["coverPhotoURL"] = coverPhoto }
         return dict
+    }
+
+    func serializePlace(_ place: FlyBuy.Place) -> [String: Any] {
+        var dict: [String: Any] = [
+            "name": place.name,
+            "placeID": place.id
+        ]
+        if let address = place.address { dict["address"] = address }
+        return dict
+    }
+
+    func buildPlace(from dict: [String: Any]) -> FlyBuy.Place {
+        return FlyBuy.Place(
+            id: dict["placeID"] as? String ?? "",
+            name: dict["name"] as? String ?? "",
+            placeFormatted: dict["address"] as? String ?? "",
+            address: dict["address"] as? String,
+            distance: 0.0
+        )
     }
 
     func buildCustomerInfo(from dict: [String: Any]) -> CustomerInfo {

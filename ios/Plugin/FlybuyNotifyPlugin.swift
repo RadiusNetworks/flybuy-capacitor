@@ -1,4 +1,6 @@
 import Capacitor
+import CoreLocation
+import FlyBuy
 import FlyBuyNotify
 
 @objc(FlybuyNotifyPlugin)
@@ -16,5 +18,15 @@ public class FlybuyNotifyPlugin: CAPPlugin {
         }
         FlyBuyNotify.Manager.shared.updateCustomTemplateContent(templateContent)
         call.resolve()
+    }
+
+    @objc func sync(_ call: CAPPluginCall) {
+        let force = call.getBool("force") ?? false
+        FlyBuyNotify.Manager.shared.sync(force: force) { error in
+            if let error = error {
+                return call.reject(error.localizedDescription, "FLYBUY_ERROR")
+            }
+            call.resolve()
+        }
     }
 }

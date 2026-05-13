@@ -183,6 +183,29 @@ export interface OrderOptions {
 }
 
 // ─────────────────────────────────────────────
+// Places
+// ─────────────────────────────────────────────
+
+export interface CircularRegion {
+  latitude: number;
+  longitude: number;
+  radius: number;             // meters
+}
+
+export interface FlyBuyPlace {
+  name: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  placeID?: string;           // platform-specific place identifier
+}
+
+export interface PlaceSuggestOptions {
+  latitude?: number;
+  longitude?: number;
+}
+
+// ─────────────────────────────────────────────
 // Core Plugin Interface (customer + sites + links)
 // ─────────────────────────────────────────────
 
@@ -198,7 +221,7 @@ export interface FlybuyPlugin {
     ageVerification: boolean;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  createCustomerWithLogin(options: {
+  login(options: {
     customerInfo: CustomerInfo;
     email: string;
     password: string;
@@ -210,24 +233,18 @@ export interface FlybuyPlugin {
     token: string;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  logoutCustomer(): Promise<void>;
+  logout(): Promise<void>;
 
   updateCustomer(options: {
     customerInfo: CustomerInfo;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
-  signUpCustomer(options: {
+  signUp(options: {
     email: string;
     password: string;
   }): Promise<{ customer: FlyBuyCustomer }>;
 
   // ── Sites ────────────────────────────────────
-
-  fetchAllSites(): Promise<{ sites: FlyBuySite[] }>;
-
-  fetchSitesByQuery(options: {
-    query: string;
-  }): Promise<{ sites: FlyBuySite[] }>;
 
   fetchSitesByRegion(options: {
     latitude: number;
@@ -238,6 +255,25 @@ export interface FlybuyPlugin {
   fetchSiteByPartnerIdentifier(options: {
     partnerIdentifier: string;
   }): Promise<{ site: FlyBuySite }>;
+
+  /** Fetch sites near a resolved place. Call placesSuggest then placesRetrieve first. */
+  fetchSitesNearPlace(options: {
+    place: FlyBuyPlace;
+    radius: number;
+  }): Promise<{ sites: FlyBuySite[] }>;
+
+  // ── Places ────────────────────────────────────
+
+  /** Get place suggestions for a search keyword. */
+  placesSuggest(options: {
+    query: string;
+    options?: PlaceSuggestOptions;
+  }): Promise<{ places: FlyBuyPlace[] }>;
+
+  /** Resolve a place suggestion into a full Place with coordinates. */
+  placesRetrieve(options: {
+    place: FlyBuyPlace;
+  }): Promise<{ place: FlyBuyPlace }>;
 
   // ── Deep Links ────────────────────────────────
 

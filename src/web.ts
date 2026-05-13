@@ -3,7 +3,9 @@ import type {
   FlybuyPlugin,
   FlyBuyCustomer,
   FlyBuySite,
+  FlyBuyPlace,
   CustomerInfo,
+  PlaceSuggestOptions,
   LinkDetails,
 } from './definitions';
 
@@ -23,35 +25,27 @@ export class FlybuyWeb extends WebPlugin implements FlybuyPlugin {
     return this.notSupported('createCustomer');
   }
 
-  async createCustomerWithLogin(_options: { customerInfo: CustomerInfo; email: string; password: string; termsOfService: boolean; ageVerification: boolean }): Promise<{ customer: FlyBuyCustomer }> {
-    return this.notSupported('createCustomerWithLogin');
+  async login(_options: { customerInfo: CustomerInfo; email: string; password: string; termsOfService: boolean; ageVerification: boolean }): Promise<{ customer: FlyBuyCustomer }> {
+    return this.notSupported('login');
   }
 
   async loginWithToken(_options: { token: string }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('loginWithToken');
   }
 
-  async logoutCustomer(): Promise<void> {
-    return this.notSupported('logoutCustomer');
+  async logout(): Promise<void> {
+    return this.notSupported('logout');
   }
 
   async updateCustomer(_options: { customerInfo: CustomerInfo }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('updateCustomer');
   }
 
-  async signUpCustomer(_options: { email: string; password: string }): Promise<{ customer: FlyBuyCustomer }> {
-    return this.notSupported('signUpCustomer');
+  async signUp(_options: { email: string; password: string }): Promise<{ customer: FlyBuyCustomer }> {
+    return this.notSupported('signUp');
   }
 
   // ── Sites ────────────────────────────────────
-
-  async fetchAllSites(): Promise<{ sites: FlyBuySite[] }> {
-    return this.notSupported('fetchAllSites');
-  }
-
-  async fetchSitesByQuery(_options: { query: string }): Promise<{ sites: FlyBuySite[] }> {
-    return this.notSupported('fetchSitesByQuery');
-  }
 
   async fetchSitesByRegion(_options: { latitude: number; longitude: number; radiusMeters: number }): Promise<{ sites: FlyBuySite[] }> {
     return this.notSupported('fetchSitesByRegion');
@@ -59,6 +53,20 @@ export class FlybuyWeb extends WebPlugin implements FlybuyPlugin {
 
   async fetchSiteByPartnerIdentifier(_options: { partnerIdentifier: string }): Promise<{ site: FlyBuySite }> {
     return this.notSupported('fetchSiteByPartnerIdentifier');
+  }
+
+  async fetchSitesNearPlace(_options: { place: FlyBuyPlace; radius: number }): Promise<{ sites: FlyBuySite[] }> {
+    return this.notSupported('fetchSitesNearPlace');
+  }
+
+  // ── Places ────────────────────────────────────
+
+  async placesSuggest(_options: { query: string; options?: PlaceSuggestOptions }): Promise<{ places: FlyBuyPlace[] }> {
+    return this.notSupported('placesSuggest');
+  }
+
+  async placesRetrieve(_options: { place: FlyBuyPlace }): Promise<{ place: FlyBuyPlace }> {
+    return this.notSupported('placesRetrieve');
   }
 
   // ── Deep Links ────────────────────────────────

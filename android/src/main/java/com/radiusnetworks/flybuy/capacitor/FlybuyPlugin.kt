@@ -12,6 +12,9 @@ import com.radiusnetworks.flybuy.sdk.data.common.SdkError
 import com.radiusnetworks.flybuy.sdk.data.customer.CustomerInfo
 import com.radiusnetworks.flybuy.sdk.data.location.CircularRegion
 import com.radiusnetworks.flybuy.sdk.data.room.domain.Customer
+import com.radiusnetworks.flybuy.sdk.data.places.Place
+import com.radiusnetworks.flybuy.sdk.data.places.PlaceLocation
+import com.radiusnetworks.flybuy.sdk.manager.builder.PlaceSuggestionOptions
 import com.radiusnetworks.flybuy.sdk.data.room.domain.Site
 import com.radiusnetworks.flybuy.sdk.pickup.data.error.PickupError
 
@@ -53,7 +56,7 @@ class FlybuyPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun createCustomerWithLogin(call: PluginCall) {
+    fun login(call: PluginCall) {
         val infoObj = call.getObject("customerInfo")
             ?: return call.reject("customerInfo is required", "INVALID_ARGUMENT")
         val email = call.getString("email")
@@ -93,7 +96,7 @@ class FlybuyPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun logoutCustomer(call: PluginCall) {
+    fun logout(call: PluginCall) {
         FlyBuyCore.getInstance().customer.logout()
         call.resolve()
     }
@@ -113,7 +116,7 @@ class FlybuyPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun signUpCustomer(call: PluginCall) {
+    fun signUp(call: PluginCall) {
         val email = call.getString("email")
             ?: return call.reject("email is required", "INVALID_ARGUMENT")
         val password = call.getString("password")
@@ -162,6 +165,60 @@ class FlybuyPlugin : Plugin() {
             if (site == null) return@fetchByPartnerIdentifier call.reject("Site not found", "NOT_FOUND")
             val ret = JSObject()
             ret.put("site", serializeSite(site))
+            call.resolve(ret)
+        }
+    }
+
+    @PluginMethod
+    fun fetchSitesNearPlace(call: PluginCall) {
+        val placeObj = call.getObject("place")
+            ?: return call.reject("place is required", "INVALID_ARGUMENT")
+        val radius = call.getDouble("radius")
+            ?: return call.reject("radius is required", "INVALID_ARGUMENT")
+
+        val place = buildPlace(placeObj)
+        FlyBuyCore.getInstance().sites.fetchNear(place, radius.toFloat(), null) { sites, _, sdkError ->
+            if (sdkError != null) return@fetchNear rejectWithError(call, sdkError)
+            val ret = JSObject()
+            ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
+            call.resolve(ret)
+        }
+    }
+
+    // ── Places ────────────────────────────────────────────────────────────────
+
+    @PluginMethod
+    fun placesSuggest(call: PluginCall) {
+        val query = call.getString("query")
+            ?: return call.reject("query is required", "INVALID_ARGUMENT")
+        val optionsObj = call.getObject("options")
+        val latitude = optionsObj?.getDouble("latitude")
+        val longitude = optionsObj?.getDouble("longitude")
+
+        val suggestionOptionsBuilder = PlaceSuggestionOptions.Builder()
+        if (latitude != null && longitude != null) {
+            suggestionOptionsBuilder.setProximity(latitude, longitude)
+        }
+        val suggestionOptions = suggestionOptionsBuilder.build()
+        FlyBuyCore.getInstance().places.suggest(query, suggestionOptions) { places, sdkError ->
+            if (sdkError != null) return@suggest rejectWithError(call, sdkError)
+            val ret = JSObject()
+            ret.put("places", (places ?: emptyList()).map { serializePlace(it) }.toJSArray())
+            call.resolve(ret)
+        }
+    }
+
+    @PluginMethod
+    fun placesRetrieve(call: PluginCall) {
+        val placeObj = call.getObject("place")
+            ?: return call.reject("place is required", "INVALID_ARGUMENT")
+
+        val place = buildPlace(placeObj)
+        FlyBuyCore.getInstance().places.retrieve(place) { resolvedPlace, sdkError ->
+            if (sdkError != null) return@retrieve rejectWithError(call, sdkError)
+            if (resolvedPlace == null) return@retrieve call.reject("Place not found", "NOT_FOUND")
+            val ret = JSObject()
+            ret.put("place", serializePlaceLocation(resolvedPlace))
             call.resolve(ret)
         }
     }
@@ -216,7 +273,7 @@ class FlybuyPlugin : Plugin() {
         }
     }
 
-    private fun serializeSite(site: Site): JSObject {
+    internal fun serializeSite(site: Site): JSObject {
         return JSObject().apply {
             put("id", site.id)
             site.name?.let { put("name", it) }
@@ -236,6 +293,32 @@ class FlybuyPlugin : Plugin() {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    internal fun serializePlace(place: Place): JSObject {
+        return JSObject().apply {
+            put("name", place.name)
+            put("address", place.address ?: "")
+            put("placeID", place.id)
+            place.distance?.let { put("distance", it) }
+        }
+    }
+
+    internal fun serializePlaceLocation(location: PlaceLocation): JSObject {
+        return JSObject().apply {
+            put("latitude", location.latitude)
+            put("longitude", location.longitude)
+        }
+    }
+
+    private fun buildPlace(obj: JSObject): Place {
+        return Place(
+            name = obj.getString("name") ?: "",
+            id = obj.getString("placeID") ?: "",
+            placeFormatted = obj.getString("address") ?: "",
+            address = obj.getString("address") ?: "",
+            distance = null
+        )
+    }
 
     internal fun buildCustomerInfo(obj: JSObject): CustomerInfo {
         return CustomerInfo(

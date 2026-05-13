@@ -36,33 +36,34 @@ else
   fi
 fi
 
-# ── CocoaPods ────────────────────────────────────────────────────────────────
+# ── Java 21 ──────────────────────────────────────────────────────────────────
 echo ""
-echo "🦺 Checking CocoaPods..."
-if ! command -v pod &> /dev/null; then
-  echo "   Installing CocoaPods..."
-  brew install cocoapods
+echo "☕ Checking Java 21..."
+JAVA_21_HOME=""
+for candidate in \
+    "/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home" \
+    "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home"; do
+  if [ -d "$candidate" ]; then
+    JAVA_21_HOME="$candidate"
+    break
+  fi
+done
+
+if [ -z "$JAVA_21_HOME" ]; then
+  echo "   Installing Java 21 (Zulu)..."
+  brew install --cask zulu@21
+  JAVA_21_HOME="/Library/Java/JavaVirtualMachines/zulu-21.jdk/Contents/Home"
 else
-  echo "   CocoaPods $(pod --version) already installed ✓"
+  echo "   Java 21 found at $JAVA_21_HOME ✓"
 fi
 
-# ── Java 17 ──────────────────────────────────────────────────────────────────
-echo ""
-echo "☕ Checking Java..."
-if ! command -v java &> /dev/null; then
-  echo "   Installing Java 17..."
-  brew install openjdk@17
-  sudo ln -sfn $(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
-else
-  JAVA_VERSION=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
-  if [ "$JAVA_VERSION" -lt 17 ]; then
-    echo "   ⚠️  Java $JAVA_VERSION detected — version 17+ required"
-    echo "   Installing Java 17..."
-    brew install openjdk@17
-    sudo ln -sfn $(brew --prefix)/opt/openjdk@17/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-17.jdk
-  else
-    echo "   Java $(java -version 2>&1 | head -1) already installed ✓"
-  fi
+# Set JAVA_HOME for this session and remind user to add to shell profile
+export JAVA_HOME="$JAVA_21_HOME"
+echo "   JAVA_HOME set to $JAVA_HOME"
+if ! grep -q 'JAVA_HOME.*21' ~/.zshrc 2>/dev/null; then
+  echo ""
+  echo "   💡 Add this to your ~/.zshrc to make it permanent:"
+  echo "      export JAVA_HOME=\"$JAVA_21_HOME\""
 fi
 
 # ── Xcode CLI Tools ───────────────────────────────────────────────────────────
@@ -84,17 +85,11 @@ cd "$REPO_ROOT"
 npm install
 echo "   npm dependencies installed ✓"
 
-# ── iOS CocoaPods ─────────────────────────────────────────────────────────────
+# ── iOS SPM ───────────────────────────────────────────────────────────────────
 echo ""
-echo "🍎 Installing iOS CocoaPods..."
-if [ -f "ios/Plugin/Podfile" ]; then
-  cd ios/Plugin
-  pod install
-  cd "$OLDPWD"
-  echo "   CocoaPods installed ✓"
-else
-  echo "   ⚠️  ios/Plugin/Podfile not found — skipping pod install"
-fi
+echo "🍎 Resolving iOS Swift Package Manager dependencies..."
+swift package resolve
+echo "   SPM dependencies resolved ✓"
 
 # ── Android ───────────────────────────────────────────────────────────────────
 echo ""
@@ -125,6 +120,6 @@ echo ""
 echo "Next steps:"
 echo "  • Run all CI checks:  ./scripts/ci.sh"
 echo "  • Run iOS CI:         ./scripts/ci-ios.sh"
-echo "  • Open iOS in Xcode:  open ios/Plugin/Plugin.xcworkspace"
+echo "  • Open iOS in Xcode:  open ios/Plugin/Plugin.xcodeproj"
 echo "  • Open Android:       open android/ in Android Studio"
 echo "========================================"
