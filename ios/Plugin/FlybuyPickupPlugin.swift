@@ -5,8 +5,11 @@ import FlyBuyPickup
 @objc(FlybuyPickupPlugin)
 public class FlybuyPickupPlugin: CAPPlugin {
 
-    private var core: Instance {
-        return try! FlyBuy.Core.getInstance()
+    // MARK: - Instance Helper
+
+    private func getInstance(_ call: CAPPluginCall) -> FlyBuy.Instance {
+        let appAuthId = call.getString("appAuthId")
+        return try! FlyBuy.Core.getInstance(forAppAuthId: appAuthId)
     }
 
     // MARK: - Order Observers
@@ -20,7 +23,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
             queue: .main
         ) { [weak self] _ in
             guard let self = self else { return }
-            let orders = (try? FlyBuy.Core.getInstance())?.orders.all ?? []
+            let orders = (try? FlyBuy.Core.getInstance(forAppAuthId: nil))?.orders.all ?? []
             self.notifyListeners("ordersUpdated", data: [
                 "orders": orders.map { self.serializeOrder($0) }
             ])
@@ -62,7 +65,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
     // MARK: - Orders
 
     @objc func fetchOrders(_ call: CAPPluginCall) {
-        core.orders.fetch { orders, error in
+        getInstance(call).orders.fetch { orders, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["orders": (orders ?? []).map { self.serializeOrder($0) }])
         }
@@ -70,11 +73,12 @@ public class FlybuyPickupPlugin: CAPPlugin {
 
     @objc func getOrders(_ call: CAPPluginCall) {
         let filter = call.getString("filter") ?? "all"
+        let instance = getInstance(call)
         let orders: [Order]
         switch filter {
-        case "open":   orders = core.orders.open
-        case "closed": orders = core.orders.closed
-        default:       orders = core.orders.all
+        case "open":   orders = instance.orders.open
+        case "closed": orders = instance.orders.closed
+        default:       orders = instance.orders.all
         }
         call.resolve(["orders": orders.map { serializeOrder($0) }])
     }
@@ -83,7 +87,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         guard let code = call.getString("redemptionCode") else {
             return call.reject("redemptionCode is required", "INVALID_ARGUMENT")
         }
-        core.orders.fetch(withRedemptionCode: code) { order, error in
+        getInstance(call).orders.fetch(withRedemptionCode: code) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order found", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -96,7 +100,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("siteID and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        core.orders.create(siteID: siteID, orderOptions: orderOptions) { order, error in
+        getInstance(call).orders.create(siteID: siteID, orderOptions: orderOptions) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order returned", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -109,7 +113,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("sitePartnerIdentifier and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        core.orders.create(
+        getInstance(call).orders.create(
             sitePartnerIdentifier: sitePartnerIdentifier,
             orderOptions: orderOptions
         ) { order, error in
@@ -125,7 +129,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let orderOptions = buildOrderOptions(from: orderOptionsDict) else {
             return call.reject("redemptionCode and orderOptions.customerName are required", "INVALID_ARGUMENT")
         }
-        core.orders.claim(
+        getInstance(call).orders.claim(
             withRedemptionCode: code,
             orderOptions: orderOptions
         ) { order, error in
@@ -140,7 +144,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
               let state = call.getString("state") else {
             return call.reject("orderID and state are required", "INVALID_ARGUMENT")
         }
-        core.orders.updateOrderState(orderID: orderID, state: state) { order, error in
+        getInstance(call).orders.updateOrderState(orderID: orderID, state: state) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let order = order else { return call.reject("No order returned", "NOT_FOUND") }
             call.resolve(["order": self.serializeOrder(order)])
@@ -154,7 +158,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         }
         let spotIdentifier = call.getString("spotIdentifier")
         if let spotIdentifier = spotIdentifier {
-            core.orders.updateCustomerState(
+            getInstance(call).orders.updateCustomerState(
                 orderID: orderID, customerState: customerState, spotIdentifier: spotIdentifier
             ) { order, error in
                 if let error = error { return self.rejectWithError(call, error) }
@@ -162,7 +166,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
                 call.resolve(["order": self.serializeOrder(order)])
             }
         } else {
-            core.orders.updateCustomerState(
+            getInstance(call).orders.updateCustomerState(
                 orderID: orderID, customerState: customerState
             ) { order, error in
                 if let error = error { return self.rejectWithError(call, error) }
@@ -182,7 +186,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         if let carColor = call.getString("customerCarColor") { builder.setCustomerCarColor(carColor) }
         if let licensePlate = call.getString("customerLicensePlate") { builder.setCustomerLicensePlate(licensePlate) }
         if let handoffLocation = call.getString("handoffVehicleLocation") { builder.setHandoffVehicleLocation(handoffLocation) }
-        core.orders.updatePickupMethod(
+        getInstance(call).orders.updatePickupMethod(
             orderID: orderID, pickupMethodOptions: builder.build()
         ) { order, error in
             if let error = error { return self.rejectWithError(call, error) }
@@ -198,7 +202,7 @@ public class FlybuyPickupPlugin: CAPPlugin {
         }
         let comments = call.getString("comments")
         let categories = call.getArray("categories", String.self) ?? []
-        core.orders.rateOrder(
+        getInstance(call).orders.rateOrder(
             orderID: orderID, rating: rating, comments: comments, categories: categories
         ) { order, error in
             if let error = error { return self.rejectWithError(call, error) }

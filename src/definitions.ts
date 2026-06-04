@@ -40,8 +40,6 @@ export enum PickupType {
   Curbside = 'curbside',
   Pickup = 'pickup',
   DriveThru = 'drive_thru',
-  // Note: 'delivery' is reserved for delivery service providers (DSPs)
-  // and should not be used in customer-facing apps.
 }
 
 // ─────────────────────────────────────────────
@@ -57,7 +55,7 @@ export enum LinkType {
 export interface LinkDetails {
   url: string;
   type: LinkType;
-  params?: Record<string, string>;  // e.g. { r: 'REDEMPTION_CODE' } for redemption links
+  params?: Record<string, string>;
 }
 
 // ─────────────────────────────────────────────
@@ -78,15 +76,15 @@ export enum FlybuyErrorCode {
 // ─────────────────────────────────────────────
 
 export interface CustomerInfo {
-  name: string;             // required
+  name: string;
   carType?: string;
   carColor?: string;
   licensePlate?: string;
-  phone?: string;           // pass empty string if not used
+  phone?: string;
 }
 
 export interface FlyBuyCustomer {
-  token: string;            // store securely for subsequent loginWithToken calls
+  token: string;
   emailAddress?: string;
   name?: string;
   carType?: string;
@@ -96,8 +94,8 @@ export interface FlyBuyCustomer {
 }
 
 export interface PickupWindow {
-  start: string;            // ISO8601 — same as end if single time
-  end?: string;             // ISO8601 — nil means ASAP
+  start: string;   // ISO8601
+  end?: string;    // ISO8601 — nil means ASAP
 }
 
 export interface PickupConfig {
@@ -129,40 +127,33 @@ export interface FlyBuyOrder {
   state: OrderState | string;
   customerState: CustomerState | string;
 
-  // Identifiers
   partnerIdentifier?: string;
   partnerIdentifierForCrew?: string;
   partnerIdentifierForCustomer?: string;
 
-  // Status flags
-  redeemedAt?: string;                    // ISO8601 — empty means unclaimed
+  redeemedAt?: string;
   isOpen: boolean;
 
-  // Rating
-  customerRatingValue?: number;           // if set, order already rated
+  customerRatingValue?: number;
 
-  // Spot
   spotIdentifierEntryEnabled?: boolean;
   spotIdentifierInputType?: string;
 
-  // Pickup details
   pickupType?: PickupType | string;
   pickupWindow?: PickupWindow;
-  etaAtStop?: string;                     // ISO8601
+  etaAtStop?: string;
 
-  // Customer vehicle info
   customerName?: string;
   customerCarType?: string;
   customerCarColor?: string;
   customerCarPlate?: string;
   customerPhone?: string;
 
-  // Site
   siteID: number;
 }
 
 export interface OrderOptions {
-  customerName: string;                   // required
+  customerName: string;
   customerPhone?: string;
   customerCarColor?: string;
   customerCarType?: string;
@@ -189,7 +180,7 @@ export interface OrderOptions {
 export interface CircularRegion {
   latitude: number;
   longitude: number;
-  radius: number;             // meters
+  radius: number;   // meters
 }
 
 export interface FlyBuyPlace {
@@ -197,7 +188,7 @@ export interface FlyBuyPlace {
   address?: string;
   latitude?: number;
   longitude?: number;
-  placeID?: string;           // platform-specific place identifier
+  placeID?: string;
 }
 
 export interface PlaceSuggestOptions {
@@ -206,76 +197,54 @@ export interface PlaceSuggestOptions {
 }
 
 // ─────────────────────────────────────────────
-// Core Plugin Interface (customer + sites + links)
+// Public Instance API
 // ─────────────────────────────────────────────
 
-export interface FlybuyPlugin {
-
-  // ── Customer ─────────────────────────────────
-
-  getCurrentCustomer(): Promise<{ customer: FlyBuyCustomer | null }>;
-
-  createCustomer(options: {
-    customerInfo: CustomerInfo;
-    termsOfService: boolean;
-    ageVerification: boolean;
-  }): Promise<{ customer: FlyBuyCustomer }>;
-
-  login(options: {
-    customerInfo: CustomerInfo;
-    email: string;
-    password: string;
-    termsOfService: boolean;
-    ageVerification: boolean;
-  }): Promise<{ customer: FlyBuyCustomer }>;
-
-  loginWithToken(options: {
-    token: string;
-  }): Promise<{ customer: FlyBuyCustomer }>;
-
+export interface ICustomerMethods {
+  getCurrent(): Promise<{ customer: FlyBuyCustomer | null }>;
+  create(options: { customerInfo: CustomerInfo; termsOfService: boolean; ageVerification: boolean }): Promise<{ customer: FlyBuyCustomer }>;
+  login(options: { email: string; password: string }): Promise<{ customer: FlyBuyCustomer }>;
+  loginWithToken(options: { token: string }): Promise<{ customer: FlyBuyCustomer }>;
   logout(): Promise<void>;
+  update(options: { customerInfo: CustomerInfo }): Promise<{ customer: FlyBuyCustomer }>;
+  signUp(options: { email: string; password: string }): Promise<{ customer: FlyBuyCustomer }>;
+}
 
-  updateCustomer(options: {
-    customerInfo: CustomerInfo;
-  }): Promise<{ customer: FlyBuyCustomer }>;
+export interface ISiteMethods {
+  fetchByRegion(options: { latitude: number; longitude: number; radiusMeters: number }): Promise<{ sites: FlyBuySite[] }>;
+  fetchByPartnerIdentifier(options: { partnerIdentifier: string }): Promise<{ site: FlyBuySite }>;
+  fetchNearPlace(options: { place: FlyBuyPlace; radius: number }): Promise<{ sites: FlyBuySite[] }>;
+}
 
-  signUp(options: {
-    email: string;
-    password: string;
-  }): Promise<{ customer: FlyBuyCustomer }>;
+export interface IPlaceMethods {
+  suggest(options: { query: string; options?: PlaceSuggestOptions }): Promise<{ places: FlyBuyPlace[] }>;
+  retrieve(options: { place: FlyBuyPlace }): Promise<{ place: FlyBuyPlace }>;
+}
 
-  // ── Sites ────────────────────────────────────
+export interface Instance {
+  customer: ICustomerMethods;
+  sites: ISiteMethods;
+  places: IPlaceMethods;
+  parseLink(options: { url: string }): Promise<LinkDetails>;
+}
 
-  fetchSitesByRegion(options: {
-    latitude: number;
-    longitude: number;
-    radiusMeters: number;
-  }): Promise<{ sites: FlyBuySite[] }>;
+// ─────────────────────────────────────────────
+// Internal Native Bridge Interface
+// ─────────────────────────────────────────────
 
-  fetchSiteByPartnerIdentifier(options: {
-    partnerIdentifier: string;
-  }): Promise<{ site: FlyBuySite }>;
-
-  /** Fetch sites near a resolved place. Call placesSuggest then placesRetrieve first. */
-  fetchSitesNearPlace(options: {
-    place: FlyBuyPlace;
-    radius: number;
-  }): Promise<{ sites: FlyBuySite[] }>;
-
-  // ── Places ────────────────────────────────────
-
-  /** Get place suggestions for a search keyword. */
-  placesSuggest(options: {
-    query: string;
-    options?: PlaceSuggestOptions;
-  }): Promise<{ places: FlyBuyPlace[] }>;
-
-  /** Resolve a place suggestion into a full Place with coordinates. */
-  placesRetrieve(options: {
-    place: FlyBuyPlace;
-  }): Promise<{ place: FlyBuyPlace }>;
-
-  // ── Deep Links ────────────────────────────────
-
+/** @internal — not part of the public API. Use getInstance() instead. */
+export interface FlybuyPlugin {
+  getCurrentCustomer(options: { appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer | null }>;
+  createCustomer(options: { customerInfo: CustomerInfo; termsOfService: boolean; ageVerification: boolean; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }>;
+  login(options: { email: string; password: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }>;
+  loginWithToken(options: { token: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }>;
+  logout(options: { appAuthId: string | null }): Promise<void>;
+  updateCustomer(options: { customerInfo: CustomerInfo; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }>;
+  signUp(options: { email: string; password: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }>;
+  fetchSitesByRegion(options: { latitude: number; longitude: number; radiusMeters: number; appAuthId: string | null }): Promise<{ sites: FlyBuySite[] }>;
+  fetchSiteByPartnerIdentifier(options: { partnerIdentifier: string; appAuthId: string | null }): Promise<{ site: FlyBuySite }>;
+  fetchSitesNearPlace(options: { place: FlyBuyPlace; radius: number; appAuthId: string | null }): Promise<{ sites: FlyBuySite[] }>;
+  placesSuggest(options: { query: string; options?: PlaceSuggestOptions; appAuthId: string | null }): Promise<{ places: FlyBuyPlace[] }>;
+  placesRetrieve(options: { place: FlyBuyPlace; appAuthId: string | null }): Promise<{ place: FlyBuyPlace }>;
   parseLink(options: { url: string }): Promise<LinkDetails>;
 }
