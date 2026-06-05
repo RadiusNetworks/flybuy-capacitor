@@ -13,19 +13,21 @@ import com.radiusnetworks.flybuy.sdk.data.room.domain.PickupWindow
 import com.radiusnetworks.flybuy.sdk.data.room.domain.open
 import com.radiusnetworks.flybuy.sdk.manager.builder.OrderOptions
 import com.radiusnetworks.flybuy.sdk.manager.builder.PickupMethodOptions
-import java.text.SimpleDateFormat
 import java.time.Instant
-import java.util.Locale
-import java.util.TimeZone
 
 @CapacitorPlugin(name = "FlybuyPickup")
 class FlybuyPickupPlugin : Plugin() {
+
+    // ── Instance Helper ───────────────────────────────────────────────────────
+
+    private fun getInstance(call: PluginCall) =
+        FlyBuyCore.getInstance(call.getString("appAuthId"))
 
     // ── Orders ───────────────────────────────────────────────────────────────
 
     @PluginMethod
     fun fetchOrders(call: PluginCall) {
-        FlyBuyCore.getInstance().orders.fetch { orders, sdkError ->
+        getInstance(call).orders.fetch { orders, sdkError ->
             if (sdkError != null) return@fetch rejectWithError(call, sdkError)
             val ret = JSObject()
             ret.put("orders", (orders ?: emptyList()).map { serializeOrder(it) }.toJSArray())
@@ -36,9 +38,10 @@ class FlybuyPickupPlugin : Plugin() {
     @PluginMethod
     fun getOrders(call: PluginCall) {
         val filter = call.getString("filter") ?: "all"
+        val instance = getInstance(call)
         val orders = when (filter) {
-            "open" -> FlyBuyCore.getInstance().orders.open
-            else   -> FlyBuyCore.getInstance().orders.all
+            "open" -> instance.orders.open
+            else   -> instance.orders.all
         }
         val ret = JSObject()
         ret.put("orders", orders.map { serializeOrder(it) }.toJSArray())
@@ -50,7 +53,7 @@ class FlybuyPickupPlugin : Plugin() {
         val redemptionCode = call.getString("redemptionCode")
             ?: return call.reject("redemptionCode is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().orders.fetch(redemptionCode) { order, sdkError ->
+        getInstance(call).orders.fetch(redemptionCode) { order, sdkError ->
             if (sdkError != null) return@fetch rejectWithError(call, sdkError)
             if (order == null) return@fetch call.reject("No order found", "NOT_FOUND")
             val ret = JSObject()
@@ -68,7 +71,7 @@ class FlybuyPickupPlugin : Plugin() {
         val orderOptions = buildOrderOptions(orderOptionsObj)
             ?: return call.reject("customerName is required in orderOptions", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().orders.create(siteID = siteID, orderOptions = orderOptions) { order, sdkError ->
+        getInstance(call).orders.create(siteID = siteID, orderOptions = orderOptions) { order, sdkError ->
             if (sdkError != null) return@create rejectWithError(call, sdkError)
             if (order == null) return@create call.reject("No order returned", "NOT_FOUND")
             val ret = JSObject()
@@ -86,7 +89,7 @@ class FlybuyPickupPlugin : Plugin() {
         val orderOptions = buildOrderOptions(orderOptionsObj)
             ?: return call.reject("customerName is required in orderOptions", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().orders.create(
+        getInstance(call).orders.create(
             sitePartnerIdentifier = sitePartnerIdentifier,
             orderOptions = orderOptions
         ) { order, sdkError ->
@@ -107,7 +110,7 @@ class FlybuyPickupPlugin : Plugin() {
         val orderOptions = buildOrderOptions(orderOptionsObj)
             ?: return call.reject("customerName is required in orderOptions", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().orders.claim(redemptionCode, orderOptions) { order, sdkError ->
+        getInstance(call).orders.claim(redemptionCode, orderOptions) { order, sdkError ->
             if (sdkError != null) return@claim rejectWithError(call, sdkError)
             if (order == null) return@claim call.reject("No order returned", "NOT_FOUND")
             val ret = JSObject()
@@ -123,7 +126,7 @@ class FlybuyPickupPlugin : Plugin() {
         val state = call.getString("state")
             ?: return call.reject("state is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().orders.updateState(orderID, state) { order, sdkError ->
+        getInstance(call).orders.updateState(orderID, state) { order, sdkError ->
             if (sdkError != null) return@updateState rejectWithError(call, sdkError)
             if (order == null) return@updateState call.reject("No order returned", "NOT_FOUND")
             val ret = JSObject()
@@ -141,7 +144,7 @@ class FlybuyPickupPlugin : Plugin() {
         val spotIdentifier = call.getString("spotIdentifier")
 
         if (spotIdentifier != null) {
-            FlyBuyCore.getInstance().orders.updateCustomerState(orderID, customerState, spotIdentifier) { order, sdkError ->
+            getInstance(call).orders.updateCustomerState(orderID, customerState, spotIdentifier) { order, sdkError ->
                 if (sdkError != null) return@updateCustomerState rejectWithError(call, sdkError)
                 if (order == null) return@updateCustomerState call.reject("No order returned", "NOT_FOUND")
                 val ret = JSObject()
@@ -149,7 +152,7 @@ class FlybuyPickupPlugin : Plugin() {
                 call.resolve(ret)
             }
         } else {
-            FlyBuyCore.getInstance().orders.updateCustomerState(orderID, customerState) { order, sdkError ->
+            getInstance(call).orders.updateCustomerState(orderID, customerState) { order, sdkError ->
                 if (sdkError != null) return@updateCustomerState rejectWithError(call, sdkError)
                 if (order == null) return@updateCustomerState call.reject("No order returned", "NOT_FOUND")
                 val ret = JSObject()
@@ -172,7 +175,7 @@ class FlybuyPickupPlugin : Plugin() {
         call.getString("customerLicensePlate")?.let { builder.setCustomerLicensePlate(it) }
         call.getString("handoffVehicleLocation")?.let { builder.setHandoffVehicleLocation(it) }
 
-        FlyBuyCore.getInstance().orders.updatePickupMethod(orderID, builder.build()) { order, sdkError ->
+        getInstance(call).orders.updatePickupMethod(orderID, builder.build()) { order, sdkError ->
             if (sdkError != null) return@updatePickupMethod rejectWithError(call, sdkError)
             if (order == null) return@updatePickupMethod call.reject("No order returned", "NOT_FOUND")
             val ret = JSObject()
@@ -196,7 +199,7 @@ class FlybuyPickupPlugin : Plugin() {
             }
         }
 
-        FlyBuyCore.getInstance().orders.rateOrder(
+        getInstance(call).orders.rateOrder(
             orderId = orderID,
             rating = rating,
             comments = comments,
@@ -237,10 +240,10 @@ class FlybuyPickupPlugin : Plugin() {
             put("customerCarType", order.customer.carType)
             put("customerCarColor", order.customer.carColor)
             put("customerCarPlate", order.customer.licensePlate)
-            order.etaAt?.let { put("etaAtStop", it.toString()) }  // etaAt is nullable
+            order.etaAt?.let { put("etaAtStop", it.toString()) }
             order.pickupWindow?.let { window ->
                 val windowObj = JSObject()
-                windowObj.put("start", window.start.toString())  // non-null
+                windowObj.put("start", window.start.toString())
                 window.end?.let { windowObj.put("end", it.toString()) }
                 put("pickupWindow", windowObj)
             }

@@ -17,55 +17,55 @@ export class FlybuyWeb extends WebPlugin implements FlybuyPlugin {
 
   // ── Customer ─────────────────────────────────
 
-  async getCurrentCustomer(): Promise<{ customer: FlyBuyCustomer | null }> {
+  async getCurrentCustomer(_options: { appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer | null }> {
     return this.notSupported('getCurrentCustomer');
   }
 
-  async createCustomer(_options: { customerInfo: CustomerInfo; termsOfService: boolean; ageVerification: boolean }): Promise<{ customer: FlyBuyCustomer }> {
+  async createCustomer(_options: { customerInfo: CustomerInfo; termsOfService: boolean; ageVerification: boolean; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('createCustomer');
   }
 
-  async login(_options: { customerInfo: CustomerInfo; email: string; password: string; termsOfService: boolean; ageVerification: boolean }): Promise<{ customer: FlyBuyCustomer }> {
+  async login(_options: { email: string; password: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('login');
   }
 
-  async loginWithToken(_options: { token: string }): Promise<{ customer: FlyBuyCustomer }> {
+  async loginWithToken(_options: { token: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('loginWithToken');
   }
 
-  async logout(): Promise<void> {
+  async logout(_options: { appAuthId: string | null }): Promise<void> {
     return this.notSupported('logout');
   }
 
-  async updateCustomer(_options: { customerInfo: CustomerInfo }): Promise<{ customer: FlyBuyCustomer }> {
+  async updateCustomer(_options: { customerInfo: CustomerInfo; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('updateCustomer');
   }
 
-  async signUp(_options: { email: string; password: string }): Promise<{ customer: FlyBuyCustomer }> {
+  async signUp(_options: { email: string; password: string; appAuthId: string | null }): Promise<{ customer: FlyBuyCustomer }> {
     return this.notSupported('signUp');
   }
 
   // ── Sites ────────────────────────────────────
 
-  async fetchSitesByRegion(_options: { latitude: number; longitude: number; radiusMeters: number }): Promise<{ sites: FlyBuySite[] }> {
+  async fetchSitesByRegion(_options: { latitude: number; longitude: number; radiusMeters: number; appAuthId: string | null }): Promise<{ sites: FlyBuySite[] }> {
     return this.notSupported('fetchSitesByRegion');
   }
 
-  async fetchSiteByPartnerIdentifier(_options: { partnerIdentifier: string }): Promise<{ site: FlyBuySite }> {
+  async fetchSiteByPartnerIdentifier(_options: { partnerIdentifier: string; appAuthId: string | null }): Promise<{ site: FlyBuySite }> {
     return this.notSupported('fetchSiteByPartnerIdentifier');
   }
 
-  async fetchSitesNearPlace(_options: { place: FlyBuyPlace; radius: number }): Promise<{ sites: FlyBuySite[] }> {
+  async fetchSitesNearPlace(_options: { place: FlyBuyPlace; radius: number; appAuthId: string | null }): Promise<{ sites: FlyBuySite[] }> {
     return this.notSupported('fetchSitesNearPlace');
   }
 
   // ── Places ────────────────────────────────────
 
-  async placesSuggest(_options: { query: string; options?: PlaceSuggestOptions }): Promise<{ places: FlyBuyPlace[] }> {
+  async placesSuggest(_options: { query: string; options?: PlaceSuggestOptions; appAuthId: string | null }): Promise<{ places: FlyBuyPlace[] }> {
     return this.notSupported('placesSuggest');
   }
 
-  async placesRetrieve(_options: { place: FlyBuyPlace }): Promise<{ place: FlyBuyPlace }> {
+  async placesRetrieve(_options: { place: FlyBuyPlace; appAuthId: string | null }): Promise<{ place: FlyBuyPlace }> {
     return this.notSupported('placesRetrieve');
   }
 

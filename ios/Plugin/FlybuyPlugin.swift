@@ -5,14 +5,17 @@ import FlyBuy
 @objc(FlybuyPlugin)
 public class FlybuyPlugin: CAPPlugin {
 
-    private var core: FlyBuy.Instance {
-        return try! FlyBuy.Core.getInstance()
+    // MARK: - Instance Helper
+
+    private func getInstance(_ call: CAPPluginCall) -> FlyBuy.Instance {
+        let appAuthId = call.getString("appAuthId")
+        return try! FlyBuy.Core.getInstance(forAppAuthId: appAuthId)
     }
 
     // MARK: - Customer
 
     @objc func getCurrentCustomer(_ call: CAPPluginCall) {
-        if let customer = core.customer.current {
+        if let customer = getInstance(call).customer.current {
             call.resolve(["customer": serializeCustomer(customer)])
         } else {
             call.resolve(["customer": NSNull()])
@@ -26,7 +29,7 @@ public class FlybuyPlugin: CAPPlugin {
         let termsOfService = call.getBool("termsOfService") ?? false
         let ageVerification = call.getBool("ageVerification") ?? false
 
-        core.customer.create(
+        getInstance(call).customer.create(
             buildCustomerInfo(from: infoDict),
             termsOfService: termsOfService,
             ageVerification: ageVerification
@@ -38,19 +41,13 @@ public class FlybuyPlugin: CAPPlugin {
     }
 
     @objc func login(_ call: CAPPluginCall) {
-        guard let infoDict = call.getObject("customerInfo"),
-              let email = call.getString("email"),
+        guard let email = call.getString("email"),
               let password = call.getString("password") else {
-            return call.reject("customerInfo, email, and password are required", "INVALID_ARGUMENT")
+            return call.reject("email and password are required", "INVALID_ARGUMENT")
         }
-        let termsOfService = call.getBool("termsOfService") ?? false
-        let ageVerification = call.getBool("ageVerification") ?? false
-        let consent = CustomerConsent(termsOfService: termsOfService, ageVerification: ageVerification)
-        core.customer.create(
-            buildCustomerInfo(from: infoDict),
-            email: email,
-            password: password,
-            customerConsent: consent
+        getInstance(call).customer.login(
+            emailAddress: email,
+            password: password
         ) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
@@ -62,7 +59,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let token = call.getString("token") else {
             return call.reject("token is required", "INVALID_ARGUMENT")
         }
-        core.customer.loginWithToken(token: token) { customer, error in
+        getInstance(call).customer.loginWithToken(token: token) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -70,7 +67,7 @@ public class FlybuyPlugin: CAPPlugin {
     }
 
     @objc func logout(_ call: CAPPluginCall) {
-        core.customer.logout()
+        getInstance(call).customer.logout()
         call.resolve()
     }
 
@@ -78,7 +75,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let infoDict = call.getObject("customerInfo") else {
             return call.reject("customerInfo is required", "INVALID_ARGUMENT")
         }
-        core.customer.update(buildCustomerInfo(from: infoDict)) { customer, error in
+        getInstance(call).customer.update(buildCustomerInfo(from: infoDict)) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -90,7 +87,7 @@ public class FlybuyPlugin: CAPPlugin {
               let password = call.getString("password") else {
             return call.reject("email and password are required", "INVALID_ARGUMENT")
         }
-        core.customer.signUp(emailAddress: email, password: password) { customer, error in
+        getInstance(call).customer.signUp(emailAddress: email, password: password) { customer, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let customer = customer else { return call.reject("No customer returned", "NOT_FOUND") }
             call.resolve(["customer": self.serializeCustomer(customer)])
@@ -111,7 +108,7 @@ public class FlybuyPlugin: CAPPlugin {
             radius: radius,
             identifier: "flybuy-query-region"
         )
-        core.sites.fetch(region: region, options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)) { sites, _, error in
+        getInstance(call).sites.fetch(region: region, options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)) { sites, _, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
         }
@@ -121,7 +118,7 @@ public class FlybuyPlugin: CAPPlugin {
         guard let partnerIdentifier = call.getString("partnerIdentifier") else {
             return call.reject("partnerIdentifier is required", "INVALID_ARGUMENT")
         }
-        core.sites.fetchByPartnerIdentifier(
+        getInstance(call).sites.fetchByPartnerIdentifier(
             partnerIdentifier: partnerIdentifier,
             options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
         ) { site, error in
@@ -137,7 +134,7 @@ public class FlybuyPlugin: CAPPlugin {
             return call.reject("place and radius are required", "INVALID_ARGUMENT")
         }
         let place = buildPlace(from: placeDict)
-        core.sites.fetchNear(
+        getInstance(call).sites.fetchNear(
             place: place,
             radius: radius,
             options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
@@ -162,7 +159,7 @@ public class FlybuyPlugin: CAPPlugin {
             types: [],
             countryCodes: []
         )
-        core.places.suggest(query: query, options: options) { places, error in
+        getInstance(call).places.suggest(query: query, options: options) { places, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["places": (places ?? []).map { self.serializePlace($0) }])
         }
@@ -173,7 +170,7 @@ public class FlybuyPlugin: CAPPlugin {
             return call.reject("place is required", "INVALID_ARGUMENT")
         }
         let place = buildPlace(from: placeDict)
-        core.places.retrieve(place: place) { coordinate, error in
+        getInstance(call).places.retrieve(place: place) { coordinate, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let coordinate = coordinate else { return call.reject("Place not found", "NOT_FOUND") }
             call.resolve(["place": [

@@ -21,12 +21,17 @@ import com.radiusnetworks.flybuy.sdk.pickup.data.error.PickupError
 @CapacitorPlugin(name = "Flybuy")
 class FlybuyPlugin : Plugin() {
 
+    // ── Instance Helper ───────────────────────────────────────────────────────
+
+    private fun getInstance(call: PluginCall) =
+        FlyBuyCore.getInstance(call.getString("appAuthId"))
+
     // ── Customer ─────────────────────────────────────────────────────────────
 
     @PluginMethod
     fun getCurrentCustomer(call: PluginCall) {
         val ret = JSObject()
-        val customer = FlyBuyCore.getInstance().customer.current
+        val customer = getInstance(call).customer.current
         if (customer != null) {
             ret.put("customer", serializeCustomer(customer))
         } else {
@@ -42,7 +47,7 @@ class FlybuyPlugin : Plugin() {
         val termsOfService = call.getBoolean("termsOfService") ?: false
         val ageVerification = call.getBoolean("ageVerification") ?: false
 
-        FlyBuyCore.getInstance().customer.create(
+        getInstance(call).customer.create(
             buildCustomerInfo(infoObj),
             termsOfService = termsOfService,
             ageVerification = ageVerification
@@ -57,24 +62,14 @@ class FlybuyPlugin : Plugin() {
 
     @PluginMethod
     fun login(call: PluginCall) {
-        val infoObj = call.getObject("customerInfo")
-            ?: return call.reject("customerInfo is required", "INVALID_ARGUMENT")
         val email = call.getString("email")
             ?: return call.reject("email is required", "INVALID_ARGUMENT")
         val password = call.getString("password")
             ?: return call.reject("password is required", "INVALID_ARGUMENT")
-        val termsOfService = call.getBoolean("termsOfService") ?: false
-        val ageVerification = call.getBoolean("ageVerification") ?: false
 
-        FlyBuyCore.getInstance().customer.create(
-            buildCustomerInfo(infoObj),
-            email = email,
-            password = password,
-            termsOfService = termsOfService,
-            ageVerification = ageVerification
-        ) { customer, sdkError ->
-            if (sdkError != null) return@create rejectWithError(call, sdkError)
-            if (customer == null) return@create call.reject("No customer returned", "NOT_FOUND")
+        getInstance(call).customer.login(email, password) { customer, sdkError ->
+            if (sdkError != null) return@login rejectWithError(call, sdkError)
+            if (customer == null) return@login call.reject("No customer returned", "NOT_FOUND")
             val ret = JSObject()
             ret.put("customer", serializeCustomer(customer))
             call.resolve(ret)
@@ -86,7 +81,7 @@ class FlybuyPlugin : Plugin() {
         val token = call.getString("token")
             ?: return call.reject("token is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().customer.loginWithToken(token) { customer, sdkError ->
+        getInstance(call).customer.loginWithToken(token) { customer, sdkError ->
             if (sdkError != null) return@loginWithToken rejectWithError(call, sdkError)
             if (customer == null) return@loginWithToken call.reject("No customer returned", "NOT_FOUND")
             val ret = JSObject()
@@ -97,7 +92,7 @@ class FlybuyPlugin : Plugin() {
 
     @PluginMethod
     fun logout(call: PluginCall) {
-        FlyBuyCore.getInstance().customer.logout()
+        getInstance(call).customer.logout()
         call.resolve()
     }
 
@@ -106,7 +101,7 @@ class FlybuyPlugin : Plugin() {
         val infoObj = call.getObject("customerInfo")
             ?: return call.reject("customerInfo is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().customer.update(buildCustomerInfo(infoObj)) { customer, sdkError ->
+        getInstance(call).customer.update(buildCustomerInfo(infoObj)) { customer, sdkError ->
             if (sdkError != null) return@update rejectWithError(call, sdkError)
             if (customer == null) return@update call.reject("No customer returned", "NOT_FOUND")
             val ret = JSObject()
@@ -122,7 +117,7 @@ class FlybuyPlugin : Plugin() {
         val password = call.getString("password")
             ?: return call.reject("password is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().customer.signUp(email, password) { customer, sdkError ->
+        getInstance(call).customer.signUp(email, password) { customer, sdkError ->
             if (sdkError != null) return@signUp rejectWithError(call, sdkError)
             if (customer == null) return@signUp call.reject("No customer returned", "NOT_FOUND")
             val ret = JSObject()
@@ -147,7 +142,7 @@ class FlybuyPlugin : Plugin() {
             longitude = longitude,
             radius = radiusMeters.toFloat()
         )
-        FlyBuyCore.getInstance().sites.fetch(region, null) { sites, _, sdkError ->
+        getInstance(call).sites.fetch(region, null) { sites, _, sdkError ->
             if (sdkError != null) return@fetch rejectWithError(call, sdkError)
             val ret = JSObject()
             ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
@@ -160,7 +155,7 @@ class FlybuyPlugin : Plugin() {
         val partnerIdentifier = call.getString("partnerIdentifier")
             ?: return call.reject("partnerIdentifier is required", "INVALID_ARGUMENT")
 
-        FlyBuyCore.getInstance().sites.fetchByPartnerIdentifier(partnerIdentifier, null) { site, sdkError ->
+        getInstance(call).sites.fetchByPartnerIdentifier(partnerIdentifier, null) { site, sdkError ->
             if (sdkError != null) return@fetchByPartnerIdentifier rejectWithError(call, sdkError)
             if (site == null) return@fetchByPartnerIdentifier call.reject("Site not found", "NOT_FOUND")
             val ret = JSObject()
@@ -177,7 +172,7 @@ class FlybuyPlugin : Plugin() {
             ?: return call.reject("radius is required", "INVALID_ARGUMENT")
 
         val place = buildPlace(placeObj)
-        FlyBuyCore.getInstance().sites.fetchNear(place, radius.toFloat(), null) { sites, _, sdkError ->
+        getInstance(call).sites.fetchNear(place, radius.toFloat(), null) { sites, _, sdkError ->
             if (sdkError != null) return@fetchNear rejectWithError(call, sdkError)
             val ret = JSObject()
             ret.put("sites", (sites ?: emptyList()).map { serializeSite(it) }.toJSArray())
@@ -200,7 +195,7 @@ class FlybuyPlugin : Plugin() {
             suggestionOptionsBuilder.setProximity(latitude, longitude)
         }
         val suggestionOptions = suggestionOptionsBuilder.build()
-        FlyBuyCore.getInstance().places.suggest(query, suggestionOptions) { places, sdkError ->
+        getInstance(call).places.suggest(query, suggestionOptions) { places, sdkError ->
             if (sdkError != null) return@suggest rejectWithError(call, sdkError)
             val ret = JSObject()
             ret.put("places", (places ?: emptyList()).map { serializePlace(it) }.toJSArray())
@@ -214,7 +209,7 @@ class FlybuyPlugin : Plugin() {
             ?: return call.reject("place is required", "INVALID_ARGUMENT")
 
         val place = buildPlace(placeObj)
-        FlyBuyCore.getInstance().places.retrieve(place) { resolvedPlace, sdkError ->
+        getInstance(call).places.retrieve(place) { resolvedPlace, sdkError ->
             if (sdkError != null) return@retrieve rejectWithError(call, sdkError)
             if (resolvedPlace == null) return@retrieve call.reject("Place not found", "NOT_FOUND")
             val ret = JSObject()
@@ -292,8 +287,6 @@ class FlybuyPlugin : Plugin() {
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
     internal fun serializePlace(place: Place): JSObject {
         return JSObject().apply {
             put("name", place.name)
@@ -310,16 +303,6 @@ class FlybuyPlugin : Plugin() {
         }
     }
 
-    private fun buildPlace(obj: JSObject): Place {
-        return Place(
-            name = obj.getString("name") ?: "",
-            id = obj.getString("placeID") ?: "",
-            placeFormatted = obj.getString("address") ?: "",
-            address = obj.getString("address") ?: "",
-            distance = null
-        )
-    }
-
     internal fun buildCustomerInfo(obj: JSObject): CustomerInfo {
         return CustomerInfo(
             name = obj.getString("name") ?: "",
@@ -327,6 +310,16 @@ class FlybuyPlugin : Plugin() {
             carColor = obj.getString("carColor") ?: "",
             licensePlate = obj.getString("licensePlate") ?: "",
             phone = obj.getString("phone") ?: ""
+        )
+    }
+
+    private fun buildPlace(obj: JSObject): Place {
+        return Place(
+            name = obj.getString("name") ?: "",
+            id = obj.getString("placeID") ?: "",
+            placeFormatted = obj.getString("address") ?: "",
+            address = obj.getString("address") ?: "",
+            distance = null
         )
     }
 
