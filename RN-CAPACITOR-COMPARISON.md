@@ -8,8 +8,8 @@ This document compares the Flybuy React Native wrapper (`iris-react-native`) wit
 
 | | React Native | Capacitor |
 |---|---|---|
-| Core (customer, sites, places, links) | `@radiusnetworks/react-native-flybuy-core` | `flybuy-capacitor` |
-| Pickup (orders) | `@radiusnetworks/react-native-flybuy-pickup` | `flybuy-capacitor/pickup` |
+| Core (customer, sites, places, links, orders) | `@radiusnetworks/react-native-flybuy-core` | `flybuy-capacitor` |
+| Pickup (order events) | `@radiusnetworks/react-native-flybuy-pickup` | `flybuy-capacitor/pickup` |
 | Notify (campaigns) | `@radiusnetworks/react-native-flybuy-notify` | `flybuy-capacitor/notify` |
 | LiveStatus | `@radiusnetworks/react-native-flybuy-livestatus` | Native only (AppDelegate / MainApplication) |
 
@@ -28,7 +28,7 @@ import { sync, configure } from '@radiusnetworks/react-native-flybuy-notify';
 const core = getInstance();          // primary
 const core = getInstance('139');     // secondary project
 
-const pickup = getPickupInstance();
+const pickup = getPickupInstance();  // for order event listeners
 ```
 
 **Capacitor:**
@@ -40,7 +40,7 @@ import { FlybuyNotify } from 'flybuy-capacitor/notify';
 const core = getInstance();          // primary
 const core = getInstance('139');     // secondary project
 
-const pickup = getPickupInstance();
+const pickup = getPickupInstance();  // for order event listeners
 ```
 
 > **Note:** Notify does not support multi-project in either SDK — it always uses the singleton manager.
@@ -86,16 +86,16 @@ const pickup = getPickupInstance();
 
 | Operation | React Native | Capacitor | Notes |
 |---|---|---|---|
-| Fetch orders | `pickup.orders.fetch()` | `pickup.orders.fetch()` | ✅ Identical |
-| Get cached orders | — | `pickup.orders.get({filter?})` | Capacitor-only; returns from cache |
-| Fetch by redemption code | `pickup.orders.fetchByRedemptionCode(code)` | `pickup.orders.fetchByRedemptionCode({redemptionCode})` | RN positional, Capacitor options object |
-| Create by site ID | `pickup.orders.createWithSiteId(siteId, orderOptions)` | `pickup.orders.createWithSiteId({siteID, orderOptions})` | RN positional, Capacitor options object |
-| Create by partner ID | `pickup.orders.createWithSitePartnerIdentifier(pid, orderOptions)` | `pickup.orders.createWithSitePartnerIdentifier({sitePartnerIdentifier, orderOptions})` | RN positional, Capacitor options object |
-| Claim order | `pickup.orders.claim(redeemCode, orderOptions)` | `pickup.orders.claim({redemptionCode, orderOptions})` | RN positional, Capacitor options object |
-| Update order state | `pickup.orders.updateState(orderId, state)` | `pickup.orders.updateState({orderID, state})` | RN positional, Capacitor options object |
-| Update customer state | `pickup.orders.updateCustomerState(orderId, state, spot?)` | `pickup.orders.updateCustomerState({orderID, customerState, spotIdentifier?})` | RN positional, Capacitor options object |
-| Update pickup method | `pickup.orders.updatePickupMethod(orderId, options)` | `pickup.orders.updatePickupMethod({orderID, pickupType, ...})` | RN positional, Capacitor options object |
-| Rate order | `pickup.orders.rateOrder(orderId, rating, comments, categories?)` | `pickup.orders.rateOrder({orderID, rating, comments?, categories?})` | RN positional, Capacitor options object |
+| Fetch orders | `pickup.orders.fetch()` | `core.orders.fetch()` | Capacitor exposes via core |
+| Get cached orders | — | `core.orders.get({filter?})` | Capacitor-only; returns from cache |
+| Fetch by redemption code | `pickup.orders.fetchByRedemptionCode(code)` | `core.orders.fetchByRedemptionCode({redemptionCode})` | RN positional, Capacitor options object |
+| Create by site ID | `pickup.orders.createWithSiteId(siteId, orderOptions)` | `core.orders.createWithSiteId({siteID, orderOptions})` | RN positional, Capacitor options object |
+| Create by partner ID | `pickup.orders.createWithSitePartnerIdentifier(pid, orderOptions)` | `core.orders.createWithSitePartnerIdentifier({sitePartnerIdentifier, orderOptions})` | RN positional, Capacitor options object |
+| Claim order | `pickup.orders.claim(redeemCode, orderOptions)` | `core.orders.claim({redemptionCode, orderOptions})` | RN positional, Capacitor options object |
+| Update order state | `pickup.orders.updateState(orderId, state)` | `core.orders.updateState({orderID, state})` | RN positional, Capacitor options object |
+| Update customer state | `pickup.orders.updateCustomerState(orderId, state, spot?)` | `core.orders.updateCustomerState({orderID, customerState, spotIdentifier?})` | RN positional, Capacitor options object |
+| Update pickup method | `pickup.orders.updatePickupMethod(orderId, options)` | `core.orders.updatePickupMethod({orderID, pickupType, ...})` | RN positional, Capacitor options object |
+| Rate order | `pickup.orders.rateOrder(orderId, rating, comments, categories?)` | `core.orders.rateOrder({orderID, rating, comments?, categories?})` | RN positional, Capacitor options object |
 
 ---
 
@@ -152,7 +152,7 @@ const orders = await pickup.orders.fetch();        // IOrder[]
 **Capacitor:**
 ```typescript
 const { customer } = await core.customer.getCurrent(); // { customer: FlyBuyCustomer | null }
-const { orders } = await pickup.orders.fetch();        // { orders: FlyBuyOrder[] }
+const { orders } = await core.orders.fetch();          // { orders: FlyBuyOrder[] }
 ```
 
 ---

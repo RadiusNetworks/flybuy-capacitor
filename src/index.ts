@@ -17,6 +17,7 @@ const FlybuyNative = registerPlugin<FlybuyPlugin>('Flybuy', {
  *
  *   const { customer } = await core.customer.getCurrent();
  *   const { sites } = await core.sites.fetchByRegion({ latitude, longitude, radiusMeters });
+ *   const { orders } = await core.orders.fetch();
  */
 export function getInstance(appAuthId: string | null = null): Instance {
   return {
@@ -50,7 +51,32 @@ export function getInstance(appAuthId: string | null = null): Instance {
       retrieve: (options) =>
         FlybuyNative.placesRetrieve({ ...options, appAuthId }),
     },
+    orders: {
+      fetch: () =>
+        FlybuyNative.fetchOrders({ appAuthId }),
+      get: (options) =>
+        FlybuyNative.getOrders({ ...options, appAuthId }),
+      fetchByRedemptionCode: ({ redemptionCode }) =>
+        FlybuyNative.fetchOrderByRedemptionCode({ redemptionCode, appAuthId }),
+      createWithSiteId: ({ siteID, orderOptions }) =>
+        FlybuyNative.createOrderBySiteID({ siteID, orderOptions, appAuthId }),
+      createWithSitePartnerIdentifier: ({ sitePartnerIdentifier, orderOptions }) =>
+        FlybuyNative.createOrderBySitePartnerIdentifier({ sitePartnerIdentifier, orderOptions, appAuthId }),
+      claim: ({ redemptionCode, orderOptions }) =>
+        FlybuyNative.claimOrder({ redemptionCode, orderOptions, appAuthId }),
+      updateState: ({ orderID, state }) =>
+        FlybuyNative.updateOrderState({ orderID, state, appAuthId }),
+      updateCustomerState: ({ orderID, customerState, spotIdentifier }) =>
+        FlybuyNative.updateOrderCustomerState({ orderID, customerState, spotIdentifier, appAuthId }),
+      updatePickupMethod: ({ orderID, ...options }) =>
+        FlybuyNative.updatePickupMethod({ orderID, ...options, appAuthId }),
+      rateOrder: ({ orderID, rating, comments, categories }) =>
+        FlybuyNative.rateOrder({ orderID, rating, comments, categories, appAuthId }),
+    },
     parseLink: (options) =>
       FlybuyNative.parseLink(options),
+    addListener: (eventName, listenerFunc) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      FlybuyNative.addListener(eventName as any, listenerFunc as any),
   };
 }
