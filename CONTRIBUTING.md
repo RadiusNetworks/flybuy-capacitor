@@ -158,8 +158,8 @@ flybuy-capacitor/
 │   ├── build.gradle
 │   ├── settings.gradle
 │   └── src/main/java/com/radiusnetworks/flybuy/capacitor/
-│       ├── FlybuyPlugin.kt         # Core — customer, sites, places, links
-│       ├── FlybuyPickupPlugin.kt   # Pickup — orders
+│       ├── FlybuyPlugin.kt         # Core — customer, sites, places, links, orders
+│       ├── FlybuyPickupPlugin.kt   # Pickup — order events
 │       └── FlybuyNotifyPlugin.kt   # Notify — campaigns
 ├── bin/                    # Local CI scripts
 ├── .github/

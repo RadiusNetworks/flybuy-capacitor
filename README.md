@@ -137,7 +137,7 @@ import { FlybuyNotify } from 'flybuy-capacitor/notify';
 // ── Get scoped instances ──────────────────────────────────────
 
 const core = getInstance();           // primary project
-const pickup = getPickupInstance();   // primary project
+const pickup = getPickupInstance();   // primary project (for order events)
 
 // Multi-project support: pass appAuthId for a secondary project
 // const core = getInstance('139');
@@ -170,7 +170,7 @@ if (!customer) {
 // ── Order Redemption Flow ─────────────────────────────────────
 
 // 1. Fetch order to show details
-const { order } = await pickup.orders.fetchByRedemptionCode({ redemptionCode: 'ABC123' });
+const { order } = await core.orders.fetchByRedemptionCode({ redemptionCode: 'ABC123' });
 
 // 2. If already claimed, go to status screen
 if (order.redeemedAt) {
@@ -179,7 +179,7 @@ if (order.redeemedAt) {
 }
 
 // 3. Claim the order
-const { order: claimedOrder } = await pickup.orders.claim({
+const { order: claimedOrder } = await core.orders.claim({
   redemptionCode: 'ABC123',
   orderOptions: {
     customerName: 'Marty McFly',
@@ -191,7 +191,7 @@ const { order: claimedOrder } = await pickup.orders.claim({
 });
 
 // 4. Start location tracking
-await pickup.orders.updateCustomerState({
+await core.orders.updateCustomerState({
   orderID: claimedOrder.id,
   customerState: CustomerState.EnRoute,
 });
@@ -208,20 +208,20 @@ function getOrderViewState(order) {
 }
 
 // I'm waiting — with optional spot identifier
-await pickup.orders.updateCustomerState({
+await core.orders.updateCustomerState({
   orderID: order.id,
   customerState: CustomerState.Waiting,
   spotIdentifier: '4B',
 });
 
 // I have my order
-await pickup.orders.updateCustomerState({
+await core.orders.updateCustomerState({
   orderID: order.id,
   customerState: CustomerState.Completed,
 });
 
 // Rate the order
-await pickup.orders.rateOrder({
+await core.orders.rateOrder({
   orderID: order.id,
   rating: 5,
   comments: 'Great service',
@@ -267,7 +267,7 @@ await FlybuyNotify.sync({ force: false });
 // ── Error Handling ────────────────────────────────────────────
 
 try {
-  await pickup.orders.fetchByRedemptionCode({ redemptionCode: 'INVALID' });
+  await core.orders.fetchByRedemptionCode({ redemptionCode: 'INVALID' });
 } catch (err: any) {
   switch (err.code) {
     case FlybuyErrorCode.OrdersError:
@@ -321,21 +321,7 @@ const core = getInstance('139');   // secondary project
 | `suggest(...)` | Get place suggestions for a keyword |
 | `retrieve(...)` | Resolve a place suggestion to full coordinates |
 
-#### `core.parseLink(...)`
-Parse a Flybuy URL into type and params.
-
----
-
-### Pickup (`flybuy-capacitor/pickup`)
-
-Access via `getPickupInstance(appAuthId?)`.
-
-```typescript
-const pickup = getPickupInstance();        // primary
-const pickup = getPickupInstance('139');   // secondary project
-```
-
-#### `pickup.orders`
+#### `core.orders`
 | Method | Description |
 |---|---|
 | `fetch()` | Fetch orders from server, update cache |
@@ -348,6 +334,20 @@ const pickup = getPickupInstance('139');   // secondary project
 | `updateCustomerState({ orderID, customerState, spotIdentifier? })` | Update customer state (optionally with spot identifier) |
 | `updatePickupMethod({ orderID, pickupType, ... })` | Update pickup type and vehicle info |
 | `rateOrder({ orderID, rating, comments?, categories? })` | Submit order rating |
+
+#### `core.parseLink(...)`
+Parse a Flybuy URL into type and params.
+
+---
+
+### Pickup (`flybuy-capacitor/pickup`)
+
+Access via `getPickupInstance(appAuthId?)`. Used exclusively for order event listeners.
+
+```typescript
+const pickup = getPickupInstance();        // primary
+const pickup = getPickupInstance('139');   // secondary project
+```
 
 #### Events
 | Event | Payload |
