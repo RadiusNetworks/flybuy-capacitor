@@ -1,0 +1,66 @@
+name: Capacitor 5 compatibility check
+
+# Verifies the plugin actually builds against a minimal Capacitor 5 Android host app,
+# not just that no Capacitor-6-specific API is used by inspection.
+#
+# iOS/CocoaPods equivalent intentionally not included yet — blocked on resolving
+# the FlyBuy SDK's CocoaPods dependency declarations in FlybuyCapacitor.podspec.
+
+on:
+  pull_request:
+    paths:
+      - "android/**"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch: {}
+
+jobs:
+  android-capacitor-5-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout plugin repo
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+
+      - name: Build and pack the plugin
+        id: pack
+        run: |
+          npm ci
+          npm run build
+          TARBALL=$(npm pack --silent)
+          echo "tarball=$(pwd)/$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Scaffold a minimal Capacitor 5 host app
+        run: |
+          mkdir -p /tmp/cap5-host/www
+          cd /tmp/cap5-host
+          npm init -y
+          npm install --save-exact \
+            @capacitor/core@5.2.3 \
+            @capacitor/cli@5.2.3 \
+            @capacitor/android@5.2.3
+          echo "<html><body>compat check</body></html>" > www/index.html
+          npx cap init "Cap5Host" "com.example.cap5host" --web-dir=www
+          npx cap add android
+
+      - name: Install the plugin tarball into the host app
+        run: |
+          cd /tmp/cap5-host
+          npm install "${{ steps.pack.outputs.tarball }}"
+          npx cap sync android
+
+      - name: Build the Android project
+        run: |
+          cd /tmp/cap5-host/android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
