@@ -59,7 +59,7 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation project(':capacitor-android')
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.8.7"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.11.0"
 
     // Flybuy SDK — Bill of Materials
     implementation platform("com.radiusnetworks.flybuy:bom:2.17.2")
