@@ -1,6 +1,6 @@
 {
   "name": "flybuy-capacitor",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Capacitor plugin wrapping the Flybuy SDK (iOS & Android) by Radius Networks",
   "main": "dist/plugin.cjs.js",
@@ -59,7 +59,7 @@
     "typescript-eslint": "^8.61.1"
   },
   "peerDependencies": {
-    "@capacitor/core": ">=6.0.0"
+    "@capacitor/core": ">=5.0.0"
   },
   "capacitor": {
     "ios": {
