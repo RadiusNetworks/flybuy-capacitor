@@ -1,0 +1,78 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 6.3.2 effective-5.10 (swiftlang-6.3.2.1.108 clang-2100.1.1.101)
+// swift-module-flags: -target arm64-apple-ios14.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -O -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -module-name FlyBuyLiveStatus
+// swift-module-flags-ignorable: -no-verify-emitted-module-interface -formal-cxx-interoperability-mode=off -interface-compiler-version 6.3.2
+import ActivityKit
+import DeveloperToolsSupport
+import FlyBuy
+@_exported import FlyBuyLiveStatus
+import Foundation
+import Swift
+import SwiftUI
+import UIKit
+import WidgetKit
+import _Concurrency
+import _StringProcessing
+import _SwiftConcurrencyShims
+@_hasMissingDesignatedInitializers @objc(FlyBuyLiveStatusOptions) public class LiveStatusOptions : ObjectiveC.NSObject {
+  @objc public static func Builder() -> FlyBuyLiveStatus.LiveStatusOptionsBuilder
+  @objc deinit
+}
+@_inheritsConvenienceInitializers @objc(FlyBuyLiveStatusOptionsBuilder) public class LiveStatusOptionsBuilder : ObjectiveC.NSObject {
+  @objc public func build() -> FlyBuyLiveStatus.LiveStatusOptions
+  @objc public func setIconName(_ iconName: Swift.String?) -> FlyBuyLiveStatus.LiveStatusOptionsBuilder
+  @objc public func setStatusTintColor(_ tintColor: UIKit.UIColor?) -> FlyBuyLiveStatus.LiveStatusOptionsBuilder
+  @objc public func setStatusTintColorDarkMode(_ tintColor: UIKit.UIColor?) -> FlyBuyLiveStatus.LiveStatusOptionsBuilder
+  @objc override dynamic public init()
+  @objc deinit
+}
+@_inheritsConvenienceInitializers @_hasMissingDesignatedInitializers @available(iOS 16.2, *)
+@objc(FlyBuyLiveStatusManager) final public class FlyBuyLiveStatusManager : ObjectiveC.NSObject {
+  @objc public static let shared: FlyBuyLiveStatus.FlyBuyLiveStatusManager
+  @objc final public var liveStatusIconName: Swift.String?
+  @objc final public var liveStatusTintColor: UIKit.UIColor?
+  @objc final public var liveStatusTintColorDarkMode: UIKit.UIColor?
+  @objc final public func configure(withOptions configOptions: FlyBuyLiveStatus.LiveStatusOptions)
+  @objc deinit
+}
+@available(iOS 16.2, *)
+@_Concurrency.MainActor @preconcurrency public struct FlyBuyWidget : SwiftUI.Widget {
+  @_Concurrency.MainActor @preconcurrency public init()
+  @_Concurrency.MainActor @preconcurrency public var body: some SwiftUI.WidgetConfiguration {
+    get
+  }
+  @available(iOS 16.2, *)
+  public typealias Body = @_opaqueReturnTypeOf("$s16FlyBuyLiveStatus0aB6WidgetV4bodyQrvp", 0) __
+}
+@_inheritsConvenienceInitializers @objc(FlyBuyOrderAttributes) public class OrderAttributes : ObjectiveC.NSObject, ActivityKit.ActivityAttributes {
+  public struct ContentState : Swift.Codable, Swift.Hashable {
+    public let status: Swift.String
+    public let statusLocalized: Swift.String
+    public let placeName: Swift.String?
+    public let orderId: Swift.String?
+    public let etr: Swift.String?
+    public let formatterETR: Swift.String?
+    public let progress: Swift.Int
+    public let iconName: Swift.String?
+    public let tintColorHexString: Swift.String?
+    public let tintColorDarkModeHexString: Swift.String?
+    public init(status: Swift.String, statusLocalized: Swift.String, placeName: Swift.String? = nil, orderId: Swift.String? = nil, etr: Swift.String? = nil, iconName: Swift.String? = nil, tintColorHexString: Swift.String? = nil, tintColorDarkModeHexString: Swift.String? = nil)
+    public static func == (a: FlyBuyLiveStatus.OrderAttributes.ContentState, b: FlyBuyLiveStatus.OrderAttributes.ContentState) -> Swift.Bool
+    public func encode(to encoder: any Swift.Encoder) throws
+    public func hash(into hasher: inout Swift.Hasher)
+    public var hashValue: Swift.Int {
+      get
+    }
+    public init(from decoder: any Swift.Decoder) throws
+  }
+  @objc override dynamic public init()
+  @objc deinit
+  public func encode(to encoder: any Swift.Encoder) throws
+  required public init(from decoder: any Swift.Decoder) throws
+}
+extension FlyBuy.Order {
+  public func asOrderAttributes() -> FlyBuyLiveStatus.OrderAttributes.ContentState?
+  public func getOrderStatusLocalizedString() -> Swift.String?
+}
+@available(iOS 16.2, *)
+extension FlyBuyLiveStatus.FlyBuyWidget : Swift.Sendable {}

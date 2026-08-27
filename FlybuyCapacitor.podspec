@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name = 'FlybuyCapacitor'
-  s.version = '0.1.5'
+  s.version = '0.2.0'
   s.summary = 'Capacitor plugin wrapping the Flybuy SDK by Radius Networks'
   s.license = 'MIT'
   s.homepage = 'https://github.com/RadiusNetworks/flybuy-capacitor'
@@ -12,13 +12,10 @@ Pod::Spec.new do |s|
   s.dependency 'Capacitor'
   s.swift_version = '5.9'
 
-  # Flybuy SDK is distributed by Radius Networks via Swift Package Manager only —
-  # there is no published CocoaPods spec for FlyBuyPickup/FlyBuyNotify/FlyBuyPresence
-  # (confirmed: no .podspec in https://github.com/RadiusNetworks/flybuy-ios, and
-  # `pod spec lint` fails with "Unable to find a specification" when these are
-  # declared). Add the SPM package directly in Xcode instead:
-  #   https://github.com/RadiusNetworks/flybuy-ios
-  # and select the modules your app needs (FlyBuyPickup, FlyBuyNotify, etc.)
-  # — this works fine alongside a CocoaPods-managed host app; Xcode supports both
-  # dependency managers in the same project.
+  # Vendored from https://github.com/RadiusNetworks/flybuy-ios @ tag 2.13.3
+  # (no CocoaPods podspec exists upstream)
+  s.vendored_frameworks = 'ios/Frameworks/FlyBuy.xcframework',
+                          'ios/Frameworks/FlyBuyPickup.xcframework',
+                          'ios/Frameworks/FlyBuyNotify.xcframework',
+                          'ios/Frameworks/FlyBuyLiveStatus.xcframework'
 end
