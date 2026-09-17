@@ -1,0 +1,5 @@
+{
+  "main": "../dist/pickup/plugin.cjs.js",
+  "module": "../dist/esm/pickup/index.js",
+  "types": "../dist/esm/pickup/index.d.ts"
+}

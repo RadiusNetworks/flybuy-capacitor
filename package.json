@@ -12,6 +12,7 @@
     "android/build.gradle",
     "dist/",
     "ios/Plugin/",
+    "pickup/",
     "FlybuyCapacitor.podspec",
     "Package.swift"
   ],

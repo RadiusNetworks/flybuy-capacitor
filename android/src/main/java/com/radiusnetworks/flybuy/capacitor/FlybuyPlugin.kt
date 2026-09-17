@@ -17,6 +17,11 @@ import com.radiusnetworks.flybuy.sdk.data.room.domain.Order
 import com.radiusnetworks.flybuy.sdk.data.room.domain.PickupWindow
 import com.radiusnetworks.flybuy.sdk.data.room.domain.Site
 import com.radiusnetworks.flybuy.sdk.data.room.domain.open
+import com.radiusnetworks.flybuy.sdk.data.pickup_config.PickupTypeConfig
+import com.radiusnetworks.flybuy.sdk.data.pickup_config.AvailableCustomerRatingCategory
+import com.radiusnetworks.flybuy.sdk.data.pickup_config.AvailableHandoffVehicleLocation
+import com.radiusnetworks.flybuy.sdk.data.pickup_config.AvailableTransportMode
+import com.radiusnetworks.flybuy.sdk.data.pickup_config.OrderProgressState
 import com.radiusnetworks.flybuy.sdk.data.places.Place
 import com.radiusnetworks.flybuy.sdk.data.places.PlaceLocation
 import com.radiusnetworks.flybuy.sdk.manager.builder.OrderOptions
@@ -481,7 +486,89 @@ class FlybuyPlugin : Plugin() {
             site.instructions?.let { put("instructions", it) }
             site.description?.let { put("descriptionText", it) }
             site.coverPhotoUrl?.let { put("coverPhotoURL", it) }
+            site.pickupConfig?.let { config ->
+                put("pickupConfig", JSObject().apply {
+                    put("type", config.type)
+                    put("id", config.id)
+                    put("customerNameEditingEnabled", config.customerNameEditingEnabled)
+                    put("pickupTypeSelectionEnabled", config.pickupTypeSelectionEnabled)
+                    put("customerFeedbackEnabled", config.customerFeedbackEnabled)
+                    put("defaultTransportMode", config.defaultTransportMode)
+                    put("accentColor", config.projectAccentColor)
+                    put("accentTextColor", config.projectAccentTextColor)
+                    config.askToAskImageUrl?.let { put("askToAskImageURL", it) }
+                    config.privacyPolicyUrl?.let { put("privacyPolicyURL", it) }
+                    config.termsOfServiceUrl?.let { put("termsOfServiceURL", it) }
+                    put("availablePickupTypes", serializePickupTypeConfigs(config.availablePickupTypes))
+                    put("availableHandoffVehicleLocations", serializeAvailableHandoffVehicleLocations(config.availableHandoffVehicleLocations))
+                    put("orderProgressStates", serializeOrderProgressStates(config.orderProgressStates))
+                    put("availableTransportModes", serializeAvailableTransportModes(config.availableTransportModes ?: emptyList()))
+                    put("availableCustomerRatingCategories", serializeAvailableCustomerRatingCategories(config.availableCustomerRatingCategories ?: emptyList()))
+                })
+            }
         }
+    }
+
+    internal fun serializePickupTypeConfigs(configs: List<PickupTypeConfig>): JSArray {
+        val array = JSArray()
+        configs.forEach { config ->
+            array.put(JSObject().apply {
+                put("pickupType", config.pickupType)
+                put("pickupTypeLocalizedString", config.pickupTypeLocalizedString)
+                put("requireVehicleInfo", config.requireVehicleInfo)
+                put("showHandoffVehicleLocations", config.showHandoffVehicleLocations)
+                put("showVehicleInfoFields", config.showVehicleInfoFields)
+            })
+        }
+        return array
+    }
+
+    internal fun serializeAvailableHandoffVehicleLocations(locations: List<AvailableHandoffVehicleLocation>): JSArray {
+        val array = JSArray()
+        locations.forEach { location ->
+            array.put(JSObject().apply {
+                put("vehicleLocation", location.vehicleLocation)
+                put("vehicleLocationLocalizedString", location.vehicleLocationLocalizedString)
+            })
+        }
+        return array
+    }
+
+    internal fun serializeOrderProgressStates(states: List<OrderProgressState>): JSArray {
+        val array = JSArray()
+        states.forEach { state ->
+            array.put(JSObject().apply {
+                put("state", state.state)
+                put("stateLocalizedString", state.stateLocalizedString)
+            })
+        }
+        return array
+    }
+
+    internal fun serializeAvailableTransportModes(modes: List<AvailableTransportMode>): JSArray {
+        val array = JSArray()
+        modes.forEach { mode ->
+            array.put(JSObject().apply {
+                put("transportMode", mode.transportMode)
+                put("transportModeLocalizedString", mode.transportModeLocalizedString)
+            })
+        }
+        return array
+    }
+
+    // Android's second field is named customerRatingLocalizedString (no
+    // "Category" in the middle) — iOS's is customerRatingCategoryLocalizedString.
+    // Normalized to the iOS/canonical name here, matching the plugin's existing
+    // convention for other cross-platform naming mismatches (e.g. accentColor).
+    internal fun serializeAvailableCustomerRatingCategories(categories: List<AvailableCustomerRatingCategory>): JSArray {
+        val array = JSArray()
+        categories.forEach { category ->
+            array.put(JSObject().apply {
+                put("customerRatingCategory", category.customerRatingCategory)
+                put("customerRatingCategoryLocalizedString", category.customerRatingLocalizedString)
+            })
+        }
+        return array
     }
 
     internal fun serializePlace(place: Place): JSObject {
