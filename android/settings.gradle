@@ -15,7 +15,7 @@ buildscript {
         // Only used when building the plugin standalone (e.g. CI)
         // Host apps provide their own AGP via their root build.gradle
         classpath 'com.android.tools.build:gradle:8.9.0'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
     }
 }
 
