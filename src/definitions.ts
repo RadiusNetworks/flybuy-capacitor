@@ -40,6 +40,7 @@ export enum PickupType {
   Curbside = 'curbside',
   Pickup = 'pickup',
   DriveThru = 'drive_thru',
+  DineIn = 'dine_in',
 }
 
 // ─────────────────────────────────────────────
@@ -98,10 +99,61 @@ export interface PickupWindow {
   end?: string;    // ISO8601 — nil means ASAP
 }
 
+export interface PickupTypeConfig {
+  pickupType: string;
+  pickupTypeLocalizedString: string;
+  requireVehicleInfo: boolean;
+  showHandoffVehicleLocations: boolean;
+  showVehicleInfoFields: boolean;
+}
+
+export interface AvailableCustomerRatingCategory {
+  customerRatingCategory: string;
+  customerRatingCategoryLocalizedString: string;
+}
+
+export interface AvailableHandoffVehicleLocation {
+  vehicleLocation: string;
+  vehicleLocationLocalizedString: string;
+}
+
+export interface AvailableTransportMode {
+  transportMode: string;
+  transportModeLocalizedString: string;
+}
+
+export interface OrderProgressState {
+  state: string;
+  stateLocalizedString: string;
+}
+
+// Confirmed against both native SDKs' PickupConfig classes. A few fields use
+// different names per platform (Android's projectAccentColor/
+// projectAccentTextColor vs iOS's accentColor/accentTextColor; Android's
+// askToAskImageUrl/privacyPolicyUrl/termsOfServiceUrl vs iOS's ...URL) —
+// normalized here to one canonical name per the plugin's existing convention
+// (e.g. descriptionText), mapped from each platform's native field in the
+// Kotlin/Swift bridges.
 export interface PickupConfig {
   pickupTypes?: string[];
   defaultPickupType?: string;
   partnerIdentifier?: string;
+  availablePickupTypes?: PickupTypeConfig[];
+  type?: string;
+  id?: number;
+  customerNameEditingEnabled?: boolean;
+  customerFeedbackEnabled?: boolean;
+  pickupTypeSelectionEnabled?: boolean;
+  defaultTransportMode?: string;
+  availableCustomerRatingCategories?: AvailableCustomerRatingCategory[];
+  availableHandoffVehicleLocations?: AvailableHandoffVehicleLocation[];
+  availableTransportModes?: AvailableTransportMode[];
+  orderProgressStates?: OrderProgressState[];
+  accentColor?: string;
+  accentTextColor?: string;
+  askToAskImageURL?: string;
+  privacyPolicyURL?: string;
+  termsOfServiceURL?: string;
 }
 
 export interface FlyBuySite {

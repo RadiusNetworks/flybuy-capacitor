@@ -159,7 +159,7 @@ public class FlybuyPlugin: CAPPlugin {
             radius: radius,
             identifier: "flybuy-query-region"
         )
-        getInstance(call).sites.fetch(region: region, options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)) { sites, _, error in
+        getInstance(call).sites.fetch(region: region, options: SiteOptions(operationalStatus: "live", page: nil, per: nil)) { sites, _, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
         }
@@ -171,7 +171,7 @@ public class FlybuyPlugin: CAPPlugin {
         }
         getInstance(call).sites.fetchByPartnerIdentifier(
             partnerIdentifier: partnerIdentifier,
-            options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
+            options: SiteOptions(operationalStatus: "live", page: nil, per: nil)
         ) { site, error in
             if let error = error { return self.rejectWithError(call, error) }
             guard let site = site else { return call.reject("Site not found", "NOT_FOUND") }
@@ -188,7 +188,7 @@ public class FlybuyPlugin: CAPPlugin {
         getInstance(call).sites.fetchNear(
             place: place,
             radius: radius,
-            options: SiteOptions(operationalStatus: "operational", page: nil, per: nil)
+            options: SiteOptions(operationalStatus: "live", page: nil, per: nil)
         ) { sites, _, error in
             if let error = error { return self.rejectWithError(call, error) }
             call.resolve(["sites": (sites ?? []).map { self.serializeSite($0) }])
@@ -447,7 +447,74 @@ public class FlybuyPlugin: CAPPlugin {
         if let instructions = site.instructions { dict["instructions"] = instructions }
         if let description = site.descriptionText { dict["descriptionText"] = description }
         if let coverPhoto = site.coverPhotoURL { dict["coverPhotoURL"] = coverPhoto }
+        var pickupConfigDict: [String: Any] = [
+            "type": site.pickupConfig.type,
+            "id": site.pickupConfig.id,
+            "customerNameEditingEnabled": site.pickupConfig.customerNameEditingEnabled,
+            "pickupTypeSelectionEnabled": site.pickupConfig.pickupTypeSelectionEnabled,
+            "customerFeedbackEnabled": site.pickupConfig.customerFeedbackEnabled,
+            "accentColor": site.pickupConfig.accentColor,
+            "accentTextColor": site.pickupConfig.accentTextColor,
+            "availablePickupTypes": serializePickupTypeConfigs(site.pickupConfig.availablePickupTypes)
+        ]
+        if let defaultTransportMode = site.pickupConfig.defaultTransportMode { pickupConfigDict["defaultTransportMode"] = defaultTransportMode }
+        if let askToAskImageURL = site.pickupConfig.askToAskImageURL { pickupConfigDict["askToAskImageURL"] = askToAskImageURL }
+        if let privacyPolicyURL = site.pickupConfig.privacyPolicyURL { pickupConfigDict["privacyPolicyURL"] = privacyPolicyURL }
+        if let termsOfServiceURL = site.pickupConfig.termsOfServiceURL { pickupConfigDict["termsOfServiceURL"] = termsOfServiceURL }
+        pickupConfigDict["availableCustomerRatingCategories"] = serializeAvailableCustomerRatingCategories(site.pickupConfig.availableCustomerRatingCategories)
+        pickupConfigDict["availableHandoffVehicleLocations"] = serializeAvailableHandoffVehicleLocations(site.pickupConfig.availableHandoffVehicleLocation)
+        pickupConfigDict["availableTransportModes"] = serializeAvailableTransportModes(site.pickupConfig.availableTransportModes)
+        pickupConfigDict["orderProgressStates"] = serializeOrderProgressStates(site.pickupConfig.orderProgressStates)
+        dict["pickupConfig"] = pickupConfigDict
         return dict
+    }
+
+    func serializePickupTypeConfigs(_ configs: [FlyBuy.PickupTypeConfig]) -> [[String: Any]] {
+        return configs.map { config in
+            [
+                "pickupType": config.pickupType,
+                "pickupTypeLocalizedString": config.pickupTypeLocalizedString,
+                "requireVehicleInfo": config.requireVehicleInfo,
+                "showHandoffVehicleLocations": config.showHandoffVehicleLocations,
+                "showVehicleInfoFields": config.showVehicleInfoFields
+            ]
+        }
+    }
+
+    func serializeAvailableCustomerRatingCategories(_ categories: [FlyBuy.AvailableCustomerRatingCategory]) -> [[String: Any]] {
+        return categories.map { category in
+            [
+                "customerRatingCategory": category.customerRatingCategory,
+                "customerRatingCategoryLocalizedString": category.customerRatingCategoryLocalizedString
+            ]
+        }
+    }
+
+    func serializeAvailableHandoffVehicleLocations(_ locations: [FlyBuy.AvailableHandoffVehicleLocation]) -> [[String: Any]] {
+        return locations.map { location in
+            [
+                "vehicleLocation": location.vehicleLocation,
+                "vehicleLocationLocalizedString": location.vehicleLocationLocalizedString
+            ]
+        }
+    }
+
+    func serializeAvailableTransportModes(_ modes: [FlyBuy.AvailableTransportMode]) -> [[String: Any]] {
+        return modes.map { mode in
+            [
+                "transportMode": mode.transportMode,
+                "transportModeLocalizedString": mode.transportModeLocalizedString
+            ]
+        }
+    }
+
+    func serializeOrderProgressStates(_ states: [FlyBuy.OrderProgressState]) -> [[String: Any]] {
+        return states.map { state in
+            [
+                "state": state.state,
+                "stateLocalizedString": state.stateLocalizedString
+            ]
+        }
     }
 
     func serializePlace(_ place: FlyBuy.Place) -> [String: Any] {
