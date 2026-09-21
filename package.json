@@ -58,7 +58,7 @@
     "rimraf": "^5.0.0",
     "rollup": "^4.63.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.68.0"
+    "typescript-eslint": "^8.70.0"
   },
   "peerDependencies": {
     "@capacitor/core": ">=5.0.0"
